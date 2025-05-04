@@ -35,8 +35,7 @@ videos = db.videos
 
 # Ensure thumbnails folder exists
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
-import pathlib
-pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
+import pathlib; pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
 # Telegram bot
 application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -94,7 +93,12 @@ application.add_handler(CommandHandler("start", start))
 @app.route('/')
 def index():
     all_videos = list(videos.find().sort('_id', -1))
-    return render_template('index.html', videos=all_videos, bot_username=BOT_USERNAME)
+    deep_link_prefix = f"tg://resolve?domain={BOT_USERNAME}&start="
+    return render_template(
+        'index.html', videos=all_videos,
+        bot_username=BOT_USERNAME,
+        deep_link_prefix=deep_link_prefix
+    )
 
 @app.route('/thumbnails/<path:filename>')
 def thumbs(filename):
