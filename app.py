@@ -76,7 +76,8 @@ async def handle_video(update: Update, context):
         f"✅ Video processed and stored.\nDeep link:\nhttps://t.me/{BOT_USERNAME}?start={custom_key}"
     )
 
-# Handle /start with custom key\ nasync def start(update: Update, context):
+# Handle /start with custom key
+async def start_command(update: Update, context):
     args = context.args
     if args:
         key = args[0]
@@ -92,7 +93,7 @@ async def handle_video(update: Update, context):
 
 # Register handlers
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("start", start_command))
 
 # Flask routes
 @app.route('/')
