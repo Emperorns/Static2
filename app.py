@@ -38,10 +38,10 @@ videos = db.videos
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
 pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
-# Telegram bot
+# Telegram bot setup
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Video upload handler (Admin only)
+# Handle video uploads (admin only)
 async def handle_video(update: Update, context):
     user = update.effective_user or getattr(update.message, 'from_user', None)
     if not user or user.id != ADMIN_ID:
@@ -52,24 +52,25 @@ async def handle_video(update: Update, context):
     video = update.message.video
     file = await context.bot.get_file(video.file_id)
 
-    # Download locally
     local_video_path = os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4")
     await file.download_to_drive(local_video_path)
 
-    # Upload to channel to get stable file_id
+    # Upload to your channel to get valid file_id
     with open(local_video_path, 'rb') as f:
         sent_msg = await context.bot.send_video(
             chat_id=CHANNEL_ID,
             video=f,
             caption=f"Uploaded by {user.first_name}"
         )
+
     new_file_id = sent_msg.video.file_id
+    print(f"New stable file_id: {new_file_id}")  # Debug print
 
     # Generate thumbnail
     thumb_path = os.path.join(THUMB_DIR, f"{new_file_id}.jpg")
     ffmpeg.input(local_video_path, ss='00:00:01').output(thumb_path, vframes=1).run(overwrite_output=True)
 
-    # Store in DB
+    # Save to DB
     thumb_url = f"{PUBLIC_URL}/thumbnails/{new_file_id}.jpg"
     videos.insert_one({
         'file_id': new_file_id,
@@ -78,7 +79,7 @@ async def handle_video(update: Update, context):
 
     await update.message.reply_text("✅ Video uploaded and stored.")
 
-# Handle start command with file_id
+# Handle /start with file_id
 async def start(update: Update, context):
     args = context.args
     if args:
@@ -86,21 +87,22 @@ async def start(update: Update, context):
         await update.message.reply_text("🔄 Retrieving your video...")
         try:
             await context.bot.send_video(update.effective_chat.id, file_id)
-        except Exception:
+        except Exception as e:
+            print("Error sending video:", e)  # Debug
             await update.message.reply_text("❌ Could not send video. It may have expired or the file_id is invalid.")
     else:
         await update.message.reply_text("👋 Welcome! Send me a video (admin only) or click a thumbnail on the site to receive a video.")
 
-# Register handlers
+# Register bot handlers
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 application.add_handler(CommandHandler("start", start))
 
-# Web Routes
+# Flask routes
 @app.route('/')
 def index():
     all_videos = list(videos.find().sort('_id', -1))
     deep_link_prefix = f"https://t.me/{BOT_USERNAME}?start="
-    return render_template('index.html', videos=all_videos, bot_username=BOT_USERNAME, deep_link_prefix=deep_link_prefix)
+    return render_template('index.html', videos=all_videos, deep_link_prefix=deep_link_prefix)
 
 @app.route('/thumbnails/<path:filename>')
 def thumbs(filename):
@@ -111,7 +113,7 @@ def api_videos():
     all_videos = list(videos.find({}, {'_id': 0}).sort('_id', -1))
     return jsonify(all_videos)
 
-# Bot runner
+# Run bot and web server
 if __name__ == "__main__":
     def run_bot():
         loop = asyncio.new_event_loop()
