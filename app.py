@@ -42,7 +42,9 @@ pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def handle_video(update: Update, context):
-    if update.effective_user.id != ADMIN_ID:
+    # Safely get the sending user
+    user = update.effective_user or getattr(update.message, 'from_user', None)
+    if not user or user.id != ADMIN_ID:
         return
 
     # Acknowledge receipt
