@@ -5,10 +5,8 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
-from telegram.error import BadRequest
-import ffmpeg
-from threading import Thread
 import asyncio
+from threading import Thread
 
 # Load environment variables
 load_dotenv()
@@ -44,55 +42,41 @@ application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 # Handle video uploads (admin only)
 async def handle_video(update: Update, context):
-    user = update.effective_user or getattr(update.message, 'from_user', None)
+    user = update.effective_user
     if not user or user.id != ADMIN_ID:
         return
 
     await update.message.reply_text("🔄 Processing your video...")
+
     video = update.message.video
+    # Download Telegram-generated thumbnail
+    thumb_attr = video.thumb  # PhotoSize
+    thumb_file = await context.bot.get_file(thumb_attr.file_id)
     custom_key = f"file_{video.file_unique_id}"
     thumb_path = os.path.join(THUMB_DIR, f"{custom_key}.jpg")
+    await thumb_file.download_to_drive(thumb_path)
 
-    try:
-        # Try downloading full video for ffmpeg thumbnail
-        file = await context.bot.get_file(video.file_id)
-        local_video = os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4")
-        await file.download_to_drive(local_video)
-        # Generate 16:9 thumbnail at 1s
-        ffmpeg.input(local_video, ss='00:00:01').filter('crop', 'ih*16/9', 'ih').output(thumb_path, vframes=1).run(overwrite_output=True)
-    except BadRequest as e:
-        # Fallback to Telegram-provided thumbnail if video too large
-        if 'too big' in str(e):
-            thumb_attr = getattr(video, 'thumb', None)
-            if thumb_attr:
-                thumb_file = await context.bot.get_file(thumb_attr.file_id)
-                await thumb_file.download_to_drive(thumb_path)
-            else:
-                await update.message.reply_text("❌ Could not extract thumbnail.")
-                return
-        else:
-            raise
+    # Forward original video message to channel
+    sent_msg = await context.bot.forward_message(
+        chat_id=CHANNEL_ID,
+        from_chat_id=update.effective_chat.id,
+        message_id=update.message.message_id
+    )
+    new_file_id = sent_msg.video.file_id
 
-    # Upload video to channel for stable file_id
-    try:
-        with open(thumb_path, 'rb') as f:
-            _ = await context.bot.send_photo(chat_id=CHANNEL_ID, photo=f, caption=f"Thumbnail for {custom_key}")
-        # Now upload full video
-        with open(os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4"), 'rb') as vf:
-            sent = await context.bot.send_video(chat_id=CHANNEL_ID, video=vf, caption=f"Uploaded by {user.first_name}")
-        new_file_id = sent.video.file_id
-    except Exception:
-        await update.message.reply_text("❌ Unable to upload to channel.")
-        return
-
+    # Store in DB
     thumb_url = f"{PUBLIC_URL}/thumbnails/{custom_key}.jpg"
-    videos.insert_one({'file_id': new_file_id, 'custom_key': custom_key, 'thumbnail_url': thumb_url})
+    videos.insert_one({
+        'file_id': new_file_id,
+        'custom_key': custom_key,
+        'thumbnail_url': thumb_url
+    })
+
     await update.message.reply_text(
-        f"✅ Video uploaded and stored.\nDeep link: https://t.me/{BOT_USERNAME}?start={custom_key}"
+        f"✅ Video processed and stored.\nDeep link:\nhttps://t.me/{BOT_USERNAME}?start={custom_key}"
     )
 
-# Handle /start with custom key
-async def start(update: Update, context):
+# Handle /start with custom key\ nasync def start(update: Update, context):
     args = context.args
     if args:
         key = args[0]
@@ -102,13 +86,15 @@ async def start(update: Update, context):
         else:
             await update.message.reply_text("❌ Video not found.")
     else:
-        await update.message.reply_text("👋 Send me a video (admin only) or click a thumbnail to get a video.")
+        await update.message.reply_text(
+            "👋 Send me a video (admin only) or use a deep link."
+        )
 
 # Register handlers
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 application.add_handler(CommandHandler("start", start))
 
-# Routes
+# Flask routes
 @app.route('/')
 def index():
     vids = list(videos.find().sort('_id', -1))
