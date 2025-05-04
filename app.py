@@ -1,6 +1,6 @@
 import os
 import pathlib
-from flask import Flask, render_template, send_from_directory, jsonify
+from flask import Flask, render_template, send_from_directory, jsonify, make_response
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update
@@ -28,8 +28,6 @@ if not DB_NAME:
 
 # Flask setup
 app = Flask(__name__)
-# Set default cache timeout for static files (thumbnails)
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400  # 24 hours
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -67,7 +65,7 @@ async def handle_video(update: Update, context):
         )
 
     new_file_id = sent_msg.video.file_id
-    print(f"New stable file_id: {new_file_id}")  # Debug print
+    print(f"New stable file_id: {new_file_id}")
 
     # Generate thumbnail
     thumb_path = os.path.join(THUMB_DIR, f"{new_file_id}.jpg")
@@ -116,8 +114,10 @@ def index():
 
 @app.route('/thumbnails/<path:filename>')
 def thumbs(filename):
-    # Serve thumbnails with caching to prevent expiration issues
-    return send_from_directory(THUMB_DIR, filename, cache_timeout=86400)
+    # Serve thumbnails with long-lived cache headers
+    response = make_response(send_from_directory(THUMB_DIR, filename))
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 @app.route('/api/videos')
 def api_videos():
