@@ -70,26 +70,29 @@ async def handle_video(update: Update, context):
     thumb_path = os.path.join(THUMB_DIR, f"{new_file_id}.jpg")
     ffmpeg.input(local_video_path, ss='00:00:01').output(thumb_path, vframes=1).run(overwrite_output=True)
 
+    # Create custom key
+    custom_key = f"file_{video.file_unique_id}"
+
     # Save to DB
     thumb_url = f"{PUBLIC_URL}/thumbnails/{new_file_id}.jpg"
     videos.insert_one({
         'file_id': new_file_id,
+        'custom_key': custom_key,
         'thumbnail_url': thumb_url
     })
 
-    await update.message.reply_text("✅ Video uploaded and stored.")
+    await update.message.reply_text(f"✅ Video uploaded and stored.\n\nDeep link:\nhttps://t.me/{BOT_USERNAME}?start={custom_key}")
 
-# Handle /start with file_id
+# Handle /start with custom key
 async def start(update: Update, context):
     args = context.args
     if args:
-        file_id = args[0]
-        await update.message.reply_text("🔄 Retrieving your video...")
-        try:
-            await context.bot.send_video(update.effective_chat.id, file_id)
-        except Exception as e:
-            print("Error sending video:", e)  # Debug
-            await update.message.reply_text("❌ Could not send video. It may have expired or the file_id is invalid.")
+        custom_key = args[0]
+        video_data = videos.find_one({'custom_key': custom_key})
+        if video_data:
+            await context.bot.send_video(update.effective_chat.id, video_data['file_id'])
+        else:
+            await update.message.reply_text("❌ Video not found or link expired.")
     else:
         await update.message.reply_text("👋 Welcome! Send me a video (admin only) or click a thumbnail on the site to receive a video.")
 
