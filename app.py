@@ -27,7 +27,7 @@ client = MongoClient(MONGODB_URI)
 db = client[DB_NAME]
 videos = db.videos
 
-# Ensure thumbnails dir exists
+# Thumbnails directory
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
 pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -41,93 +41,100 @@ async def download_thumbnail(bot, thumb, key):
     await file.download_to_drive(thumb_path)
     return f"{PUBLIC_URL}/thumbnails/{key}.jpg"
 
-# Handler: admin uploads via bot
-async def handle_video(update: Update, context):
+# Unified handler for video and documents from private chat (admin)
+async def handle_media(update: Update, context):
     user = update.effective_user
     if not user or user.id != ADMIN_ID:
         return
     msg = update.message
-    video = msg.video
-    key = f"file_{video.file_unique_id}"
-    print(f"[BOT] Received video from admin {user.id}, processing {key}")
+    media = msg.video or msg.document
+    if not media:
+        return
+    key = f"file_{media.file_unique_id}"
+    print(f"[BOT] Received media from admin, processing {key}")
     await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔄 Processing admin upload {key}...")
-
-    # Download thumbnail
-    thumb_attr = getattr(video, 'thumbnail', None) or getattr(video, 'thumb', None)
+    # Thumbnail only for video
     thumb_url = ''
-    if thumb_attr:
-        photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-        thumb_url = await download_thumbnail(context.bot, photo, key)
-
-    # Forward video to channel
+    if msg.video:
+        thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
+        if thumb_attr:
+            photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
+            thumb_url = await download_thumbnail(context.bot, photo, key)
+    # Forward to channel
     sent = await context.bot.forward_message(
         chat_id=CHANNEL_ID,
         from_chat_id=msg.chat.id,
         message_id=msg.message_id
     )
-    file_id = sent.video.file_id
-    title = msg.caption or 'Untitled'
-
+    # Extract new file_id and type
+    if sent.video:
+        file_id = sent.video.file_id
+        media_type = 'video'
+    else:
+        file_id = sent.document.file_id
+        media_type = 'document'
+    title = msg.caption or (getattr(sent.document, 'file_name', '') if sent.document else 'Untitled')
     # Save to DB
     videos.insert_one({
         'file_id': file_id,
         'custom_key': key,
         'title': title,
-        'thumbnail_url': thumb_url
+        'thumbnail_url': thumb_url,
+        'type': media_type
     })
-    print(f"[BOT] Admin upload {key} saved")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Admin video saved: {title} ({key})")
+    print(f"[BOT] Admin upload {key} saved as {media_type}")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Admin {media_type} saved: {title} ({key})")
 
-# Handler: videos posted directly to channel
-async def channel_video(update: Update, context):
+# Unified handler for channel posts
+async def channel_media(update: Update, context):
     post = update.channel_post
-    if not post or post.chat.id != CHANNEL_ID or not post.video:
+    if not post or post.chat.id != CHANNEL_ID:
         return
-    video = post.video
-    key = f"file_{video.file_unique_id}"
-    print(f"[CHANNEL] New channel video {key}, processing...")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔄 Processing channel video {key}...")
-
-    # Download thumbnail
-    thumb_attr = getattr(video, 'thumbnail', None) or getattr(video, 'thumb', None)
+    media = post.video or post.document
+    if not media:
+        return
+    key = f"file_{media.file_unique_id}"
+    print(f"[CHANNEL] New channel media {key}, processing...")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔄 Processing channel media {key}...")
+    # Thumbnail only for video
     thumb_url = ''
-    if thumb_attr:
-        photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-        thumb_url = await download_thumbnail(context.bot, photo, key)
-
-    file_id = video.file_id
-    title = post.caption or 'Untitled'
-
-    # Save to DB
+    if post.video:
+        thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
+        if thumb_attr:
+            photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
+            thumb_url = await download_thumbnail(context.bot, photo, key)
+    file_id = media.file_id
+    media_type = 'video' if post.video else 'document'
+    title = post.caption or (getattr(media, 'file_name', '') if media else 'Untitled')
     videos.insert_one({
         'file_id': file_id,
         'custom_key': key,
         'title': title,
-        'thumbnail_url': thumb_url
+        'thumbnail_url': thumb_url,
+        'type': media_type
     })
-    print(f"[CHANNEL] Video {key} saved")
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Channel video saved: {title} ({key})")
+    print(f"[CHANNEL] Media {key} saved as {media_type}")
+    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Channel {media_type} saved: {title} ({key})")
 
-# Handler: /start deep link
+# /start handler for deep links
 async def start_command(update: Update, context):
     args = context.args
     if not args:
-        await update.message.reply_text("👋 Send me a video or use a deep link.")
+        await update.message.reply_text("👋 Send me a media or use a deep link.")
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
     if not data:
-        await update.message.reply_text("❌ Video not found.")
+        await update.message.reply_text("❌ Media not found.")
         return
-    await context.bot.send_video(
-        chat_id=update.effective_chat.id,
-        video=data['file_id'],
-        caption=data.get('title', '')
-    )
+    if data['type'] == 'video':
+        await context.bot.send_video(update.effective_chat.id, data['file_id'], caption=data.get('title', ''))
+    else:
+        await context.bot.send_document(update.effective_chat.id, data['file_id'], caption=data.get('title', ''))
 
 # Register handlers
-application.add_handler(MessageHandler(filters.VIDEO & filters.ChatType.PRIVATE, handle_video))
-application.add_handler(MessageHandler(filters.VIDEO & filters.Chat(CHANNEL_ID), channel_video))
+application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document), handle_media))
+application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document), channel_media))
 application.add_handler(CommandHandler("start", start_command))
 
 # Flask routes
