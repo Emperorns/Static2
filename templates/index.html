@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Video Gallery</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
-    .thumb { cursor: pointer; border-radius: 8px; overflow: hidden; }
-    .thumb img { width: 100%; display: block; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video Gallery</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
+    .thumb { cursor: pointer; border-radius: 8px; overflow: hidden; }
+    .thumb img { width: 100%; display: block; }
+  </style>
 </head>
 <body>
-  <h1>Video Gallery</h1>
-  <div class="grid">
-    {% for v in videos %}
-      <div class="thumb" onclick="window.open('https://t.me/{{ bot_username }}?start={{ v.file_id }}','_blank')">
-        <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
-      </div>
-    {% endfor %}
-  </div>
+  <h1>Video Gallery</h1>
+  <div class="grid">
+    {% for v in videos %}
+      <div class="thumb" onclick="window.open('https://t.me/{{ bot_username }}?start={{ v.custom_key }}','_blank')">
+        <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
+      </div>
+    {% endfor %}
+  </div>
 </body>
 </html>
