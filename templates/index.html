@@ -11,9 +11,20 @@
       padding: 20px;
       background: #f9f9f9;
     }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
     h1 {
-      text-align: center;
-      margin-bottom: 30px;
+      margin: 0;
+    }
+    .search-bar {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
     }
     .grid {
       display: grid;
@@ -43,6 +54,13 @@
       object-fit: cover;
       display: block;
     }
+    .title {
+      font-size: 14px;
+      color: #333;
+      margin: 5px 0;
+      text-align: center;
+      word-break: break-word;
+    }
     .btn, .open-btn {
       background-color: #007bff;
       color: white;
@@ -62,54 +80,66 @@
       margin-top: 5px;
       color: #555;
     }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h1>Video Gallery</h1>
+  <header>
+    <h1>Video Gallery</h1>
+    <input id="search" type="text" class="search-bar" placeholder="Search by title..." />
+  </header>
 
-  
-<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
+  <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
+  <div id="shareus-admanager-3049258825-yAuWgfpMHg">
+    <script>
+      window._shareustag = window._shareustag || {cmd:[]};
+      _shareustag.cmd.push(function() {
+        var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"],'shareus-admanager-3049258825-yAuWgfpMHg');
+      });
+    </script>
+  </div>
 
-<div id="shareus-admanager-3049258825-yAuWgfpMHg">
- <script>
-     window._shareustag = window._shareustag || {cmd:[]};
-    _shareustag.cmd.push(function() {
-      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"],'shareus-admanager-3049258825-yAuWgfpMHg');
-    });
-  </script>
-</div>
-
-
-  <div class="grid">
+  <div class="grid" id="gallery">
     {% for v in videos %}
-    <div class="card">
+    <div class="card" data-title="{{ v.title | lower }}">
       <div class="thumb-container">
-        <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
+        <img src="{{ v.thumbnail_url}}" alt="Thumbnail">
       </div>
+      <div class="title">{{ v.title }}</div>
       <button class="btn" onclick="startTimer(this, '{{ bot_username }}', '{{ v.custom_key }}')">Get Video</button>
-      <div class="timer" style="display:none;">Wait 10 seconds...</div>
-      <button class="open-btn" style="display:none;" onclick="window.open('https://t.me/Psyco_5bot?start={{ v.custom_key }}', '_blank')">Open Link</button>
+      <div class="timer hidden">Wait 10 seconds...</div>
+      <button class="open-btn hidden" onclick="window.open('https://t.me/{{ bot_username }}?start={{ v.custom_key }}', '_blank')">Open Link</button>
     </div>
     {% endfor %}
   </div>
 
   <script>
+    // Search filter
+    document.getElementById('search').addEventListener('input', function() {
+      const term = this.value.toLowerCase();
+      document.querySelectorAll('#gallery .card').forEach(card => {
+        const title = card.getAttribute('data-title');
+        card.style.display = title.includes(term) ? '' : 'none';
+      });
+    });
+
+    // Timer logic
     function startTimer(btn, username, key) {
-      btn.style.display = 'none';
+      btn.classList.add('hidden');
       const card = btn.closest('.card');
       const timerDiv = card.querySelector('.timer');
       const openBtn = card.querySelector('.open-btn');
       let countdown = 10;
 
-      timerDiv.style.display = 'block';
+      timerDiv.classList.remove('hidden');
       timerDiv.textContent = `Please wait ${countdown} seconds...`;
 
       const interval = setInterval(() => {
         countdown--;
         if (countdown <= 0) {
           clearInterval(interval);
-          timerDiv.style.display = 'none';
-          openBtn.style.display = 'inline-block';
+          timerDiv.classList.add('hidden');
+          openBtn.classList.remove('hidden');
         } else {
           timerDiv.textContent = `Please wait ${countdown} seconds...`;
         }
@@ -118,4 +148,3 @@
   </script>
 </body>
 </html>
- i
