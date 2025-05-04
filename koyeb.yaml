@@ -1,0 +1,7 @@
+services:
+  - name: telegram-netflix-python
+    type: web
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
