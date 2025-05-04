@@ -1,32 +1,39 @@
 import os
-import io
 from flask import Flask, render_template, send_from_directory, jsonify
 from flask_pymongo import PyMongo
 from dotenv import load_dotenv
-from telegram import Bot, Update
+from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import ffmpeg
 from threading import Thread
 
 # Load environment
 load_dotenv()
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-MONGO_URI = os.getenv('MONGODB_URI')
-ADMIN_ID = int(os.getenv('ADMIN_ID'))
-CHANNEL_ID = os.getenv('CHANNEL_ID')
+BOT_TOKEN    = os.getenv('BOT_TOKEN')
+MONGODB_URI = os.getenv('MONGODB_URI')            # e.g. "mongodb+srv://user:pass@cluster0.mongodb.net/?..."
+MONGO_DBNAME = os.getenv('MONGO_DBNAME')          # e.g. "telegram_netflix"
+ADMIN_ID     = int(os.getenv('ADMIN_ID'))
+CHANNEL_ID   = os.getenv('CHANNEL_ID')
 BOT_USERNAME = os.getenv('BOT_USERNAME')
-PUBLIC_URL = os.getenv('PUBLIC_URL')
-PORT = int(os.getenv('PORT', 5000))
+PUBLIC_URL   = os.getenv('PUBLIC_URL')
+PORT         = int(os.getenv('PORT', 5000))
+
+# Sanity checks
+if not MONGODB_URI:
+    raise RuntimeError("❌ MONGODB_URI environment variable is not set!")
+if not MONGO_DBNAME:
+    raise RuntimeError("❌ MONGO_DBNAME environment variable is not set! Add MONGO_DBNAME to .env")
 
 # Flask setup
 app = Flask(__name__)
-app.config["MONGO_URI"] = MONGO_URI
+app.config["MONGO_URI"]    = MONGODB_URI
+app.config["MONGO_DBNAME"] = MONGO_DBNAME
 mongo = PyMongo(app)
 videos = mongo.db.videos
 
 # Ensure thumbnails folder exists
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
-os.makedirs(THUMB_DIR, exist_ok=True)
+import pathlib; pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
 # Telegram bot
 application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -34,21 +41,24 @@ application = ApplicationBuilder().token(BOT_TOKEN).build()
 async def handle_video(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
-    video = update.message.video
+    video   = update.message.video
     file_id = video.file_id
 
+    # Forward to channel
     await context.bot.send_video(CHANNEL_ID, file_id)
 
+    # Download file
     file = await context.bot.get_file(file_id)
     video_path = os.path.join(THUMB_DIR, f"{file_id}.mp4")
     await file.download_to_drive(video_path)
 
+    # Extract thumbnail at 1 second
     thumb_path = os.path.join(THUMB_DIR, f"{file_id}.jpg")
     ffmpeg.input(video_path, ss='00:00:01').output(thumb_path, vframes=1).run(overwrite_output=True)
 
+    # Save metadata
     thumb_url = f"{PUBLIC_URL}/thumbnails/{file_id}.jpg"
     videos.insert_one({'file_id': file_id, 'thumbnail_url': thumb_url})
-
     await update.message.reply_text("✅ Video uploaded and processed.")
 
 async def start(update: Update, context):
@@ -78,5 +88,7 @@ def api_videos():
     return jsonify(all_videos)
 
 if __name__ == '__main__':
+    # Start Telegram bot polling
     Thread(target=application.run_polling, daemon=True).start()
+    # Run Flask app
     app.run(host='0.0.0.0', port=PORT)
