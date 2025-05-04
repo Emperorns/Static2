@@ -55,8 +55,8 @@ async def handle_video(update: Update, context):
     msg = update.message
     video = msg.video
     key = f"file_{video.file_unique_id}"
-    # download thumbnail
-    thumb = video.thumbnail[-1] if video.thumbnail else None
+    # download telegram thumbnail
+    thumb = video.thumbnail or video.thumb
     thumb_url = await download_thumbnail(context.bot, thumb, key) if thumb else ''
     # forward to channel
     sent = await context.bot.forward_message(
@@ -67,7 +67,7 @@ async def handle_video(update: Update, context):
     file_id = sent.video.file_id
     title = msg.caption or 'Untitled'
     videos.insert_one({'file_id': file_id, 'custom_key': key, 'title': title, 'thumbnail_url': thumb_url})
-    await msg.reply_text(f"Stored video '{title}'. Deep link: https://t.me/{BOT_USERNAME}?start={key}")
+    await msg.reply_text(f"Stored '{title}'. Deep link: https://t.me/{BOT_USERNAME}?start={key}")
 
 # Channel post handler
 async def channel_video(update: Update, context):
@@ -76,7 +76,7 @@ async def channel_video(update: Update, context):
         return
     video = post.video
     key = f"file_{video.file_unique_id}"
-    thumb = video.thumbnail[-1] if video.thumbnail else None
+    thumb = video.thumbnail or video.thumb
     thumb_url = await download_thumbnail(context.bot, thumb, key) if thumb else ''
     file_id = video.file_id
     title = post.caption or 'Untitled'
