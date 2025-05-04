@@ -6,6 +6,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import ffmpeg
 from threading import Thread
+import asyncio
 
 # Load environment
 load_dotenv()
@@ -34,7 +35,8 @@ videos = db.videos
 
 # Ensure thumbnails folder exists
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
-import pathlib; pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
+import pathlib
+pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
 # Telegram bot
 application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -42,6 +44,10 @@ application = ApplicationBuilder().token(BOT_TOKEN).build()
 async def handle_video(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
+
+    # Acknowledge receipt
+    await update.message.reply_text("🔄 Processing your video...")
+
     video   = update.message.video
     file_id = video.file_id
 
@@ -62,15 +68,18 @@ async def handle_video(update: Update, context):
     videos.insert_one({'file_id': file_id, 'thumbnail_url': thumb_url})
     await update.message.reply_text("✅ Video uploaded and processed.")
 
+# Register video handler
+application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+
 async def start(update: Update, context):
+    # Welcome message
+    await update.message.reply_text("👋 Welcome! Send me a video (admin only) or click a thumbnail on the site.")
     args = context.args
     if args:
         fid = args[0]
         await context.bot.send_video(update.effective_chat.id, fid)
-    else:
-        await update.message.reply_text("Send me a video (admin only) or click a thumbnail on the site.")
 
-application.add_handler(MessageHandler(filters.VIDEO, handle_video))
+# Register start handler
 application.add_handler(CommandHandler("start", start))
 
 # Flask routes
@@ -90,18 +99,18 @@ def api_videos():
 
 # Entry point
 if __name__ == "__main__":
-    import asyncio
-    from threading import Thread
-
     def run_bot():
         # Each thread needs its own event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        application.run_polling()
+        # Initialize and start Telegram application
+        loop.run_until_complete(application.initialize())
+        loop.run_until_complete(application.start())
+        loop.run_until_complete(application.updater.start_polling())
+        loop.run_forever()
 
     # Start Telegram polling in a separate daemon thread
     Thread(target=run_bot, daemon=True).start()
 
     # Start the Flask web server
     app.run(host="0.0.0.0", port=PORT)
-
