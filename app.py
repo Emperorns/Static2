@@ -28,6 +28,8 @@ if not DB_NAME:
 
 # Flask setup
 app = Flask(__name__)
+# Set default cache timeout for static files (thumbnails)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400  # 24 hours
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -52,6 +54,7 @@ async def handle_video(update: Update, context):
     video = update.message.video
     file = await context.bot.get_file(video.file_id)
 
+    # Download video locally
     local_video_path = os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4")
     await file.download_to_drive(local_video_path)
 
@@ -81,7 +84,9 @@ async def handle_video(update: Update, context):
         'thumbnail_url': thumb_url
     })
 
-    await update.message.reply_text(f"✅ Video uploaded and stored.\n\nDeep link:\nhttps://t.me/{BOT_USERNAME}?start={custom_key}")
+    await update.message.reply_text(
+        f"✅ Video uploaded and stored.\n\nDeep link:\nhttps://t.me/{BOT_USERNAME}?start={custom_key}"
+    )
 
 # Handle /start with custom key
 async def start(update: Update, context):
@@ -94,7 +99,9 @@ async def start(update: Update, context):
         else:
             await update.message.reply_text("❌ Video not found or link expired.")
     else:
-        await update.message.reply_text("👋 Welcome! Send me a video (admin only) or click a thumbnail on the site to receive a video.")
+        await update.message.reply_text(
+            "👋 Welcome! Send me a video (admin only) or click a thumbnail on the site to receive a video."
+        )
 
 # Register bot handlers
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
@@ -109,7 +116,8 @@ def index():
 
 @app.route('/thumbnails/<path:filename>')
 def thumbs(filename):
-    return send_from_directory(THUMB_DIR, filename)
+    # Serve thumbnails with caching to prevent expiration issues
+    return send_from_directory(THUMB_DIR, filename, cache_timeout=86400)
 
 @app.route('/api/videos')
 def api_videos():
