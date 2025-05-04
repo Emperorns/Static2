@@ -9,109 +9,99 @@
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
+      background: #f9f9f9;
     }
-
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
     }
-
-    .thumb {
-      border-radius: 8px;
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       overflow: hidden;
       display: flex;
       flex-direction: column;
       align-items: center;
+      padding: 10px;
     }
-
-    .thumb img {
+    .thumb-container {
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .thumb-container img {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
       display: block;
     }
-
-    .button-container {
-      margin-top: 8px;
-      text-align: center;
-    }
-
-    .get-video-btn,
-    .open-link-btn {
+    .btn, .open-btn {
+      background-color: #007bff;
+      color: white;
       padding: 8px 12px;
-      margin: 5px;
-      font-size: 14px;
+      border: none;
+      border-radius: 5px;
+      margin: 5px 0;
       cursor: pointer;
-    }
-
-    .countdown {
-      display: inline-block;
-      margin: 5px;
       font-size: 14px;
+    }
+    .btn:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    .timer {
+      font-size: 14px;
+      margin-top: 5px;
+      color: #555;
     }
   </style>
 </head>
 <body>
   <h1>Video Gallery</h1>
-
-  
-<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
-
-<div id="shareus-admanager-3049258825-yAuWgfpMHg">
- <script>
-     window._shareustag = window._shareustag || {cmd:[]};
-    _shareustag.cmd.push(function() {
-      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"],'shareus-admanager-3049258825-yAuWgfpMHg');
-    });
-  </script>
-</div>
-
-
   <div class="grid">
     {% for v in videos %}
-      <div class="thumb">
+    <div class="card">
+      <div class="thumb-container">
         <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
-        <div class="button-container">
-          <button class="get-video-btn" data-key="{{ v.custom_key }}">Get Video</button>
-          <span class="countdown" style="display:none;">10</span>
-          <button class="open-link-btn" style="display:none;">Open Link</button>
-        </div>
       </div>
+      <button class="btn" onclick="startTimer(this, '{{ bot_username }}', '{{ v.custom_key }}')">Get Video</button>
+      <div class="timer" style="display:none;">Wait 10 seconds...</div>
+      <button class="open-btn" style="display:none;" onclick="window.open('https://t.me/Psyco_5bot?start=file_{{ v.custom_key }}', '_blank')">Open Link</button>
+    </div>
     {% endfor %}
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const getVideoButtons = document.querySelectorAll('.get-video-btn');
+    function startTimer(btn, username, key) {
+      btn.style.display = 'none';
+      const card = btn.closest('.card');
+      const timerDiv = card.querySelector('.timer');
+      const openBtn = card.querySelector('.open-btn');
+      let countdown = 10;
 
-      getVideoButtons.forEach(button => {
-        button.addEventListener('click', function() {
-          const container = this.closest('.button-container');
-          const countdownElem = container.querySelector('.countdown');
-          const openLinkBtn = container.querySelector('.open-link-btn');
-          const customKey = this.getAttribute('data-key');
+      timerDiv.style.display = 'block';
+      timerDiv.textContent = `Please wait ${countdown} seconds...`;
 
-          let timeLeft = 10;
-          countdownElem.textContent = timeLeft;
-          countdownElem.style.display = 'inline-block';
-          this.style.display = 'none';
-
-          const timer = setInterval(() => {
-            timeLeft--;
-            countdownElem.textContent = timeLeft;
-            if (timeLeft <= 0) {
-              clearInterval(timer);
-              countdownElem.style.display = 'none';
-              openLinkBtn.style.display = 'inline-block';
-              openLinkBtn.addEventListener('click', function() {
-                window.open(`https://t.me/Psyco_5bot?start={{ v.custom_key }}','_blank');
-              });
-            }
-          }, 1000);
-        });
-      });
-    });
+      const interval = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(interval);
+          timerDiv.style.display = 'none';
+          openBtn.style.display = 'inline-block';
+        } else {
+          timerDiv.textContent = `Please wait ${countdown} seconds...`;
+        }
+      }, 1000);
+    }
   </script>
 </body>
 </html>
+ i
