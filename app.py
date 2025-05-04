@@ -88,17 +88,20 @@ def api_videos():
     all_videos = list(videos.find({}, {'_id': 0}).sort('_id', -1))
     return jsonify(all_videos)
 
-if __name__ == '__main__':
-    # Start Telegram bot polling
-import asyncio
+# Entry point
+if __name__ == "__main__":
+    import asyncio
+    from threading import Thread
 
-def run_bot():
-    # Create and set a new event loop for this thread
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    application.run_polling()
+    def run_bot():
+        # Each thread needs its own event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        application.run_polling()
 
-Thread(target=run_bot, daemon=True).start()
+    # Start Telegram polling in a separate daemon thread
+    Thread(target=run_bot, daemon=True).start()
 
-# Run Flask app
-app.run(host='0.0.0.0', port=PORT)
+    # Start the Flask web server
+    app.run(host="0.0.0.0", port=PORT)
+
