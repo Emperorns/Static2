@@ -1,6 +1,6 @@
 import os
 from flask import Flask, render_template, send_from_directory, jsonify
-from flask_pymongo import PyMongo
+from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
@@ -10,8 +10,8 @@ from threading import Thread
 # Load environment
 load_dotenv()
 BOT_TOKEN    = os.getenv('BOT_TOKEN')
-MONGODB_URI = os.getenv('MONGODB_URI')            # e.g. "mongodb+srv://user:pass@cluster0.mongodb.net/?..."
-MONGO_DBNAME = os.getenv('MONGO_DBNAME')          # e.g. "telegram_netflix"
+MONGODB_URI  = os.getenv('MONGODB_URI')            # e.g. "mongodb+srv://user:pass@cluster0.mongodb.net/Cluster0?retryWrites=true&w=majority"
+DB_NAME      = os.getenv('DB_NAME')                # e.g. "Cluster0"
 ADMIN_ID     = int(os.getenv('ADMIN_ID'))
 CHANNEL_ID   = os.getenv('CHANNEL_ID')
 BOT_USERNAME = os.getenv('BOT_USERNAME')
@@ -21,15 +21,16 @@ PORT         = int(os.getenv('PORT', 5000))
 # Sanity checks
 if not MONGODB_URI:
     raise RuntimeError("❌ MONGODB_URI environment variable is not set!")
-if not MONGO_DBNAME:
-    raise RuntimeError("❌ MONGO_DBNAME environment variable is not set! Add MONGO_DBNAME to .env")
+if not DB_NAME:
+    raise RuntimeError("❌ DB_NAME environment variable is not set! Add DB_NAME to .env")
 
 # Flask setup
 app = Flask(__name__)
-app.config["MONGO_URI"]    = MONGODB_URI
-app.config["MONGO_DBNAME"] = MONGO_DBNAME
-mongo = PyMongo(app)
-videos = mongo.db.videos
+
+# MongoDB (direct client)
+client = MongoClient(MONGODB_URI)
+db     = client[DB_NAME]
+videos = db.videos
 
 # Ensure thumbnails folder exists
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
