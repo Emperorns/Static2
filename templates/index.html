@@ -2,39 +2,116 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Video Gallery</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
-    .thumb { cursor: pointer; border-radius: 8px; overflow: hidden; }
-    .thumb img { width: 100%; display: block; }
-    .ad-banner { margin: 20px 0; text-align: center; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .thumb {
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .thumb img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      display: block;
+    }
+
+    .button-container {
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .get-video-btn,
+    .open-link-btn {
+      padding: 8px 12px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .countdown {
+      display: inline-block;
+      margin: 5px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <h1>Video Gallery</h1>
 
-
+  
 <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
 
-<div id="shareus-admanager-3049258825-eVSxoUZGCR">
+<div id="shareus-admanager-3049258825-yAuWgfpMHg">
  <script>
      window._shareustag = window._shareustag || {cmd:[]};
     _shareustag.cmd.push(function() {
-      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/eVSxoUZGCR/1', ["Responsive"],'shareus-admanager-3049258825-eVSxoUZGCR');
+      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"],'shareus-admanager-3049258825-yAuWgfpMHg');
     });
   </script>
 </div>
 
 
-
   <div class="grid">
     {% for v in videos %}
-      <div class="thumb" onclick="window.open('https://t.me/{{ bot_username }}?start={{ v.custom_key }}','_blank')">
+      <div class="thumb">
         <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
+        <div class="button-container">
+          <button class="get-video-btn" data-key="{{ v.custom_key }}">Get Video</button>
+          <span class="countdown" style="display:none;">10</span>
+          <button class="open-link-btn" style="display:none;">Open Link</button>
+        </div>
       </div>
     {% endfor %}
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const getVideoButtons = document.querySelectorAll('.get-video-btn');
+
+      getVideoButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const container = this.closest('.button-container');
+          const countdownElem = container.querySelector('.countdown');
+          const openLinkBtn = container.querySelector('.open-link-btn');
+          const customKey = this.getAttribute('data-key');
+
+          let timeLeft = 10;
+          countdownElem.textContent = timeLeft;
+          countdownElem.style.display = 'inline-block';
+          this.style.display = 'none';
+
+          const timer = setInterval(() => {
+            timeLeft--;
+            countdownElem.textContent = timeLeft;
+            if (timeLeft <= 0) {
+              clearInterval(timer);
+              countdownElem.style.display = 'none';
+              openLinkBtn.style.display = 'inline-block';
+              openLinkBtn.addEventListener('click', function() {
+                window.open(`https://t.me/Psyco_5bot?start=file_${customKey}`, '_blank');
+              });
+            }
+          }, 1000);
+        });
+      });
+    });
+  </script>
 </body>
 </html>
