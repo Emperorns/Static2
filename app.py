@@ -5,6 +5,7 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
+from telegram.error import BadRequest
 import ffmpeg
 from threading import Thread
 import asyncio
@@ -48,84 +49,83 @@ async def handle_video(update: Update, context):
         return
 
     await update.message.reply_text("🔄 Processing your video...")
-
     video = update.message.video
-    file = await context.bot.get_file(video.file_id)
-
-    # Download video locally
-    local_video_path = os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4")
-    await file.download_to_drive(local_video_path)
-
-    # Upload to your channel to get valid file_id
-    with open(local_video_path, 'rb') as f:
-        sent_msg = await context.bot.send_video(
-            chat_id=CHANNEL_ID,
-            video=f,
-            caption=f"Uploaded by {user.first_name}"
-        )
-
-    new_file_id = sent_msg.video.file_id
-    print(f"New stable file_id: {new_file_id}")
-
-    # Generate thumbnail
-    thumb_path = os.path.join(THUMB_DIR, f"{new_file_id}.jpg")
-    ffmpeg.input(local_video_path, ss='00:00:01').output(thumb_path, vframes=1).run(overwrite_output=True)
-
-    # Create custom key
     custom_key = f"file_{video.file_unique_id}"
+    thumb_path = os.path.join(THUMB_DIR, f"{custom_key}.jpg")
 
-    # Save to DB
-    thumb_url = f"{PUBLIC_URL}/thumbnails/{new_file_id}.jpg"
-    videos.insert_one({
-        'file_id': new_file_id,
-        'custom_key': custom_key,
-        'thumbnail_url': thumb_url
-    })
+    try:
+        # Try downloading full video for ffmpeg thumbnail
+        file = await context.bot.get_file(video.file_id)
+        local_video = os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4")
+        await file.download_to_drive(local_video)
+        # Generate 16:9 thumbnail at 1s
+        ffmpeg.input(local_video, ss='00:00:01').filter('crop', 'ih*16/9', 'ih').output(thumb_path, vframes=1).run(overwrite_output=True)
+    except BadRequest as e:
+        # Fallback to Telegram-provided thumbnail if video too large
+        if 'too big' in str(e):
+            thumb_attr = getattr(video, 'thumb', None)
+            if thumb_attr:
+                thumb_file = await context.bot.get_file(thumb_attr.file_id)
+                await thumb_file.download_to_drive(thumb_path)
+            else:
+                await update.message.reply_text("❌ Could not extract thumbnail.")
+                return
+        else:
+            raise
 
+    # Upload video to channel for stable file_id
+    try:
+        with open(thumb_path, 'rb') as f:
+            _ = await context.bot.send_photo(chat_id=CHANNEL_ID, photo=f, caption=f"Thumbnail for {custom_key}")
+        # Now upload full video
+        with open(os.path.join(THUMB_DIR, f"{video.file_unique_id}.mp4"), 'rb') as vf:
+            sent = await context.bot.send_video(chat_id=CHANNEL_ID, video=vf, caption=f"Uploaded by {user.first_name}")
+        new_file_id = sent.video.file_id
+    except Exception:
+        await update.message.reply_text("❌ Unable to upload to channel.")
+        return
+
+    thumb_url = f"{PUBLIC_URL}/thumbnails/{custom_key}.jpg"
+    videos.insert_one({'file_id': new_file_id, 'custom_key': custom_key, 'thumbnail_url': thumb_url})
     await update.message.reply_text(
-        f"✅ Video uploaded and stored.\n\nDeep link:\nhttps://t.me/{BOT_USERNAME}?start={custom_key}"
+        f"✅ Video uploaded and stored.\nDeep link: https://t.me/{BOT_USERNAME}?start={custom_key}"
     )
 
 # Handle /start with custom key
 async def start(update: Update, context):
     args = context.args
     if args:
-        custom_key = args[0]
-        video_data = videos.find_one({'custom_key': custom_key})
-        if video_data:
-            await context.bot.send_video(update.effective_chat.id, video_data['file_id'])
+        key = args[0]
+        data = videos.find_one({'custom_key': key})
+        if data:
+            await context.bot.send_video(update.effective_chat.id, data['file_id'])
         else:
-            await update.message.reply_text("❌ Video not found or link expired.")
+            await update.message.reply_text("❌ Video not found.")
     else:
-        await update.message.reply_text(
-            "👋 Welcome! Send me a video (admin only) or click a thumbnail on the site to receive a video."
-        )
+        await update.message.reply_text("👋 Send me a video (admin only) or click a thumbnail to get a video.")
 
-# Register bot handlers
+# Register handlers
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 application.add_handler(CommandHandler("start", start))
 
-# Flask routes
+# Routes
 @app.route('/')
 def index():
-    all_videos = list(videos.find().sort('_id', -1))
-    deep_link_prefix = f"https://t.me/{BOT_USERNAME}?start="
-    return render_template('index.html', videos=all_videos, deep_link_prefix=deep_link_prefix)
+    vids = list(videos.find().sort('_id', -1))
+    return render_template('index.html', videos=vids, bot_username=BOT_USERNAME)
 
-@app.route('/thumbnails/<path:filename>')
-def thumbs(filename):
-    # Serve thumbnails with long-lived cache headers
-    response = make_response(send_from_directory(THUMB_DIR, filename))
-    response.headers['Cache-Control'] = 'public, max-age=86400'
-    return response
+@app.route('/thumbnails/<path:fn>')
+def thumbs(fn):
+    resp = make_response(send_from_directory(THUMB_DIR, fn))
+    resp.headers['Cache-Control'] = 'public, max-age=31536000'
+    return resp
 
 @app.route('/api/videos')
 def api_videos():
-    all_videos = list(videos.find({}, {'_id': 0}).sort('_id', -1))
-    return jsonify(all_videos)
+    lst = list(videos.find({}, {'_id':0}).sort('_id', -1))
+    return jsonify(lst)
 
-# Run bot and web server
-if __name__ == "__main__":
+if __name__ == '__main__':
     def run_bot():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -133,6 +133,5 @@ if __name__ == "__main__":
         loop.run_until_complete(application.start())
         loop.run_until_complete(application.updater.start_polling())
         loop.run_forever()
-
     Thread(target=run_bot, daemon=True).start()
-    app.run(host="0.0.0.0", port=PORT)
+    app.run(host='0.0.0.0', port=PORT)
