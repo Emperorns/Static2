@@ -11,8 +11,8 @@ import asyncio
 # Load environment
 load_dotenv()
 BOT_TOKEN    = os.getenv('BOT_TOKEN')
-MONGODB_URI  = os.getenv('MONGODB_URI')            # e.g. "mongodb+srv://user:pass@cluster0.mongodb.net/Cluster0?retryWrites=true&w=majority"
-DB_NAME      = os.getenv('DB_NAME')                # e.g. "Cluster0"
+MONGODB_URI  = os.getenv('MONGODB_URI')  # e.g. "mongodb+srv://user:pass@cluster0.mongodb.net/Cluster0?retryWrites=true&w=majority"
+DB_NAME      = os.getenv('DB_NAME')      # e.g. "Cluster0"
 ADMIN_ID     = int(os.getenv('ADMIN_ID'))
 CHANNEL_ID   = os.getenv('CHANNEL_ID')
 BOT_USERNAME = os.getenv('BOT_USERNAME')
@@ -42,7 +42,7 @@ pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def handle_video(update: Update, context):
-    # Safely get the sending user
+    # Safely get user
     user = update.effective_user or getattr(update.message, 'from_user', None)
     if not user or user.id != ADMIN_ID:
         return
@@ -50,13 +50,13 @@ async def handle_video(update: Update, context):
     # Acknowledge receipt
     await update.message.reply_text("🔄 Processing your video...")
 
-    video   = update.message.video
+    video = update.message.video
     file_id = video.file_id
 
     # Forward to channel
     await context.bot.send_video(CHANNEL_ID, file_id)
 
-    # Download file
+    # Download video file
     file = await context.bot.get_file(file_id)
     video_path = os.path.join(THUMB_DIR, f"{file_id}.mp4")
     await file.download_to_drive(video_path)
@@ -74,12 +74,18 @@ async def handle_video(update: Update, context):
 application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
 async def start(update: Update, context):
-    # Welcome message
-    await update.message.reply_text("👋 Welcome! Send me a video (admin only) or click a thumbnail on the site.")
     args = context.args
     if args:
-        fid = args[0]
-        await context.bot.send_video(update.effective_chat.id, fid)
+        file_id = args[0]
+        await update.message.reply_text("🔄 Retrieving your video...")
+        try:
+            await context.bot.send_video(update.effective_chat.id, file_id)
+        except Exception:
+            await update.message.reply_text("❌ Could not send video. It may have expired or the file_id is invalid.")
+    else:
+        await update.message.reply_text(
+            "👋 Welcome! Send me a video (admin only) or click a thumbnail on the site to receive a video."
+        )
 
 # Register start handler
 application.add_handler(CommandHandler("start", start))
