@@ -155,7 +155,11 @@
     {% for v in videos %}
     <div class="card" data-title="{{ v.title | lower }}">
       <div class="thumb-container">
-        <img src="{{ v.thumbnail_url || '/static/file-icon.png' }}" alt="Thumbnail">
+        {% if v.thumbnail_url %}
+        <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
+      {% else %}
+        <img src="/static/file-icon.png" alt="File Icon">
+      {% endif %}
       </div>
       <div class="title">{{ v.title }}</div>
       <div class="actions">
