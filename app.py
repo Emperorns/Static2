@@ -133,8 +133,8 @@ async def start_command(update: Update, context):
         await context.bot.send_document(update.effective_chat.id, data['file_id'], caption=data.get('title', ''))
 
 # Register handlers
-application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document), handle_media))
-application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document), channel_media))
+application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
+application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document.ALL), channel_media))
 application.add_handler(CommandHandler("start", start_command))
 
 # Flask routes
