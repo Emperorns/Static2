@@ -90,6 +90,15 @@ def api_videos():
 
 if __name__ == '__main__':
     # Start Telegram bot polling
-    Thread(target=application.run_polling, daemon=True).start()
-    # Run Flask app
-    app.run(host='0.0.0.0', port=PORT)
+import asyncio
+
+def run_bot():
+    # Create and set a new event loop for this thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    application.run_polling()
+
+Thread(target=run_bot, daemon=True).start()
+
+# Run Flask app
+app.run(host='0.0.0.0', port=PORT)
