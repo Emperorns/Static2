@@ -66,6 +66,20 @@
 </head>
 <body>
   <h1>Video Gallery</h1>
+
+  
+<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
+
+<div id="shareus-admanager-3049258825-yAuWgfpMHg">
+ <script>
+     window._shareustag = window._shareustag || {cmd:[]};
+    _shareustag.cmd.push(function() {
+      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"],'shareus-admanager-3049258825-yAuWgfpMHg');
+    });
+  </script>
+</div>
+
+
   <div class="grid">
     {% for v in videos %}
     <div class="card">
@@ -74,7 +88,7 @@
       </div>
       <button class="btn" onclick="startTimer(this, '{{ bot_username }}', '{{ v.custom_key }}')">Get Video</button>
       <div class="timer" style="display:none;">Wait 10 seconds...</div>
-      <button class="open-btn" style="display:none;" onclick="window.open('https://t.me/Psyco_5bot?start=file_{{ v.custom_key }}', '_blank')">Open Link</button>
+      <button class="open-btn" style="display:none;" onclick="window.open('https://t.me/Psyco_5bot?start={{ v.custom_key }}', '_blank')">Open Link</button>
     </div>
     {% endfor %}
   </div>
