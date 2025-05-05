@@ -5,58 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Media Gallery</title>
   <style>
-    /* Base Styles */
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin:0; padding:0; background:#141414; color:#fff; overflow-x:hidden; }
-    header { display:flex; justify-content:space-between; align-items:center; padding:20px; background:#1f1f1f; position:sticky; top:0; z-index:1000; }
-    header h1 { margin:0; font-size:24px; color:#e50914; }
-    .search-button { background:#333; border:none; padding:8px 16px; border-radius:4px; font-size:16px; cursor:pointer; color:#fff; transition:background .2s; }
-    .search-button:hover{background:#444;}
-    /* Search Panel */
-    #search-panel{position:fixed; top:0; right:-100%; width:320px; height:100vh; background:#000; box-shadow:-2px 0 8px rgba(0,0,0,.5); transition:right .3s ease; padding:20px; z-index:999; display:flex; flex-direction:column;}
-    #search-panel.open{right:0;}
-    #search-panel input{padding:12px;font-size:16px;border:none;border-radius:4px;background:#333;color:#fff;margin-bottom:20px;}
-    #close-panel{align-self:flex-end;background:none;border:none;font-size:24px;cursor:pointer;color:#fff;margin-bottom:20px;}
-    /* Main Slider: one big 16:9 at a time */
-    .main-slider{position:relative; width:100%; overflow:hidden;}
-    .main-slider .slider-track{display:flex; transition:transform .5s ease;}
-    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative;}
-    .main-slider img{width:100%;height:100%;object-fit:cover;display:block;}
-    .main-slider .title{position:absolute; bottom:20px; left:20px; font-size:18px; font-weight:bold; background:rgba(0,0,0,.5); padding:6px 12px; border-radius:4px;}
-    .nav-arrow{position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5);border:none;font-size:32px;color:#fff;cursor:pointer;padding:8px;border-radius:50%;z-index:10;}
-    .nav-arrow.left{left:20px;} .nav-arrow.right{right:20px;}
-    /* Small Slider */
-    .small-slider{position:relative; margin-top:40px; overflow:hidden;}
-    .small-slider .track{display:flex; transition:transform .3s ease;}
-    .small-slider .small-card{flex:0 0 auto; width:120px; margin-right:12px; cursor:pointer;}
-    .small-slider img{width:100%;height:auto;border-radius:4px;}    
-    .small-slider .small-title{font-size:14px; margin-top:4px; text-align:center;}
-    .small-nav{position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5);border:none;font-size:24px;color:#fff;cursor:pointer;padding:6px;border-radius:50%;z-index:5;}
-    .small-nav.left{left:10px;} .small-nav.right{right:10px;}
+    /* Base */
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin:0; padding:20px; background:#141414; color:#fff; }
+    h2.row-title { font-size:18px; margin:20px 0 10px; text-transform:uppercase; letter-spacing:1px; }
+    /* Main Slider */
+    .main-slider{position:relative; width:100%; overflow:hidden; border-radius:12px;}
+    .main-slider .track{display:flex; transition:transform .5s ease;}
+    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden; margin-right:16px;}
+    .main-slider img{width:100%;height:100%;object-fit:cover;}
+    .main-slider .title{position:absolute; bottom:16px; left:16px; font-size:20px; background:rgba(0,0,0,.6); padding:8px 16px; border-radius:8px;}
+    /* Small Sliders */
+    .row { margin-bottom:30px; }
+    .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
+    .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
+    .small-card{display:inline-block; width:140px; margin-right:12px; cursor:pointer; border-radius:8px; overflow:hidden;}
+    .small-card img{width:100%; height:auto; display:block;}
+    .small-card .title{font-size:12px; margin:6px 0; text-align:center; color:#ddd;}
     /* Detail View */
-    #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:8px;}
+    #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
     #back-to-gallery{background:none;border:none;color:#e50914;font-size:16px;cursor:pointer;margin-bottom:20px;}
-    #detail-view .thumb-container{width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:4px;}
-    #detail-view img{width:100%;height:100%;object-fit:cover;}
-    #detail-view h2{margin-top:20px;}
-    #detail-view .actions{margin-top:20px;text-align:center;}
-    #detail-view .btn{background-color:#e50914;color:#fff;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;font-size:16px;}
-    #detail-view .timer{margin-top:10px;font-size:14px;color:#ccc;display:none;}
+    #detail-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;}
+    .actions{margin-top:20px;text-align:center;}
+    .btn{background-color:#e50914;color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
+    #open-link{display:none;margin-top:10px;color:#1a73e8;cursor:pointer;text-decoration:underline;}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Media Gallery</h1>
-    <button id="open-panel" class="search-button">Search</button>
-  </header>
-  <div id="search-panel">
-    <button id="close-panel">✖</button>
-    <input id="search-input" type="text" placeholder="Search by title...">
-  </div>
-
-  <!-- Main Slider -->
+  <h2 class="row-title">Featured</h2>
   <div class="main-slider" id="main-slider">
-    <button class="nav-arrow left" onclick="prevSlide()">❮</button>
-    <div class="slider-track" id="main-track">
+    <div class="track" id="main-track">
       {% for v in videos %}
       <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
         <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
@@ -64,112 +41,88 @@
       </div>
       {% endfor %}
     </div>
-    <button class="nav-arrow right" onclick="nextSlide()">❯</button>
   </div>
 
-  <!-- Small Slider (Recommendations) -->
-  <div class="small-slider" id="small-slider">
-    <button class="small-nav left" onclick="smallScroll(-1)">❮</button>
-    <div class="track" id="small-track">
+  <!-- Recommendation Rows -->
+  <div class="row">
+    <h2 class="row-title">Recommended</h2>
+    <div class="small-slider" id="rec-slider">
       {% for v in videos %}
       <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
         <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-        <div class="small-title">{{ v.title }}</div>
+        <div class="title">{{ v.title }}</div>
       </div>
       {% endfor %}
     </div>
-    <button class="small-nav right" onclick="smallScroll(1)">❯</button>
+  </div>
+  <div class="row">
+    <h2 class="row-title">New Releases</h2>
+    <div class="small-slider" id="new-slider">
+      {% for v in videos[::-1] %}
+      <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="title">{{ v.title }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="row">
+    <h2 class="row-title">Trending</h2>
+    <div class="small-slider" id="trend-slider">
+      {% for v in videos|shuffle %}
+      <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="title">{{ v.title }}</div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
 
   <!-- Detail View -->
   <div id="detail-view">
     <button id="back-to-gallery">← Back to Gallery</button>
-    <div class="thumb-container"><img id="detail-thumb"></div>
+    <img id="detail-thumb" alt="">
     <h2 id="detail-title"></h2>
     <div class="actions">
       <button id="detail-get" class="btn">Get File</button>
-      <div id="detail-timer" class="timer">Please wait...</div>
+      <div id="open-link">Open Link</div>
     </div>
   </div>
 
   <script>
     const BOT_USERNAME = '{{ bot_username }}';
-    // Search panel
-    const panel = document.getElementById('search-panel');
-    document.getElementById('open-panel').onclick = () => panel.classList.add('open');
-    document.getElementById('close-panel').onclick = () => panel.classList.remove('open');
-    document.getElementById('search-input').addEventListener('input', function() {
-      const term = this.value.toLowerCase();
-      document.querySelectorAll('.card, .small-card').forEach(el => {
-        const title = el.getAttribute('data-title').toLowerCase();
-        el.style.display = title.includes(term) ? '' : 'none';
-      });
+    // Main slider
+    let idx=0; const mTrack=document.getElementById('main-track'); const mCards=mTrack.children;
+    function showMain(i){ idx=(i+ mCards.length)%mCards.length; mTrack.style.transform=`translateX(-${idx*100}%)`; }
+    setInterval(()=>showMain(idx+1),5000);
+    // Card click (both main and small)
+    document.body.addEventListener('click', e=>{
+      const card = e.target.closest('.card, .small-card'); if(!card) return;
+      const thumb=card.getAttribute('data-thumb'), title=card.getAttribute('data-title'), key=card.getAttribute('data-key');
+      // populate detail
+      document.getElementById('detail-thumb').src=thumb;
+      document.getElementById('detail-thumb').alt=title;
+      document.getElementById('detail-title').textContent=title;
+      document.getElementById('detail-get').style.display='inline-block';
+      document.getElementById('open-link').style.display='none';
+      document.getElementById('detail-get').onclick = ()=> startTimer(key);
+      // hide galleries
+      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el=>el.style.display='none');
+      document.getElementById('detail-view').style.display='block';
     });
-    // Main slider functionality
-    const track = document.getElementById('main-track');
-    let current = 0;
-    const total = track.children.length;
-    function updateSlide() {
-      track.style.transform = `translateX(-${current * 100}%)`;
-    }
-    function nextSlide() { current = (current + 1) % total; updateSlide(); }
-    function prevSlide() { current = (current - 1 + total) % total; updateSlide(); }
-    let autoMain = setInterval(nextSlide, 5000);
-    document.getElementById('main-slider').addEventListener('mouseenter', () => clearInterval(autoMain));
-    document.getElementById('main-slider').addEventListener('mouseleave', () => autoMain = setInterval(nextSlide, 5000));
-    // Small slider scroll
-    const smallTrack = document.getElementById('small-track');
-    function smallScroll(dir) {
-      smallTrack.scrollBy({ left: dir * 200, behavior: 'smooth' });
-    }
-    // Randomize small slider
-    (function shuffleSmall() {
-      const items = Array.from(smallTrack.children);
-      for (let i = items.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        smallTrack.appendChild(items[j]);
-        items.splice(j,1);
-      }
-    })();
-    // Detail view
-    const galleryEl = document.getElementById('main-track');
-    const detailView = document.getElementById('detail-view');
-    const backBtn = document.getElementById('back-to-gallery');
-    const dThumb = document.getElementById('detail-thumb');
-    const dTitle = document.getElementById('detail-title');
-    const dGet = document.getElementById('detail-get');
-    const dTimer = document.getElementById('detail-timer');
-    // Click on main or small card
-    document.body.addEventListener('click', e => {
-      const card = e.target.closest('.card, .small-card');
-      if (!card) return;
-      const thumb = card.getAttribute('data-thumb');
-      const title = card.getAttribute('data-title');
-      const key = card.getAttribute('data-key');
-      dThumb.src = thumb; dThumb.alt = title;
-      dTitle.textContent = title;
-      dTimer.style.display = 'none'; dGet.disabled = false;
-      dGet.onclick = () => startTimer(key);
-      document.querySelector('.main-slider').style.display = 'none';
-      document.querySelector('.small-slider').style.display = 'none';
-      detailView.style.display = 'block';
-      history.pushState({key}, title, `/detail/${key}`);
-    });
-    backBtn.addEventListener('click', () => {
-      detailView.style.display = 'none';
-      document.querySelector('.main-slider').style.display = '';
-      document.querySelector('.small-slider').style.display = '';
-      history.pushState({}, '', '/');
-    });
-    function startTimer(key) {
-      dGet.disabled = true;
-      let count=10;
-      dTimer.textContent = `Please wait ${count} seconds...`;
-      dTimer.style.display = 'block';
-      const iv = setInterval(() => {
-        count--;
-        if(count<=0) { clearInterval(iv); document.getElementById('detail-get').textContent='Open Link'; dGet.onclick=()=>window.open(`https://t.me/${BOT_USERNAME}?start=${key}`,'_blank'); }
-        else dTimer.textContent = `Please wait ${count} seconds...`;
+    // Back
+    document.getElementById('back-to-gallery').onclick = ()=>{
+      document.getElementById('detail-view').style.display='none';
+      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el=>el.style.display='block');
+    };
+    // Timer -> show link
+    function startTimer(key){
+      const btn=document.getElementById('detail-get'); const link=document.getElementById('open-link');
+      btn.disabled=true; let c=10; btn.textContent=`Wait ${c}s...`;
+      const iv=setInterval(()=>{
+        c--;
+        if(c<=0){ clearInterval(iv); btn.style.display='none'; link.style.display='block'; link.onclick=()=>window.open(`https://t.me/${BOT_USERNAME}?start=${key}`,'_blank'); }
+        else btn.textContent=`Wait ${c}s...`;
       },1000);
     }
   </script>
