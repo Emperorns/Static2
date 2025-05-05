@@ -11,16 +11,16 @@
     /* Main Slider */
     .main-slider{position:relative; width:100%; overflow:hidden; border-radius:12px;}
     .main-slider .track{display:flex; transition:transform .5s ease;}
-    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden; margin-right:16px;}
+    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden;}
     .main-slider img{width:100%;height:100%;object-fit:cover;}
     .main-slider .title{position:absolute; bottom:16px; left:16px; font-size:20px; background:rgba(0,0,0,.6); padding:8px 16px; border-radius:8px;}
     /* Small Sliders */
     .row { margin-bottom:30px; }
     .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
     .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
-    .small-card{display:inline-block; width:140px; margin-right:12px; cursor:pointer; border-radius:8px; overflow:hidden;}
+    .small-card{display:inline-block; width:180px; margin-right:12px; cursor:pointer; border-radius:8px; overflow:hidden;}
     .small-card img{width:100%; height:auto; display:block;}
-    .small-card .title{font-size:12px; margin:6px 0; text-align:center; color:#ddd;}
+    .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd;}
     /* Detail View */
     #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
     #back-to-gallery{background:none;border:none;color:#e50914;font-size:16px;cursor:pointer;margin-bottom:20px;}
@@ -58,7 +58,7 @@
   <div class="row">
     <h2 class="row-title">New Releases</h2>
     <div class="small-slider" id="new-slider">
-      {% for v in videos[::-1] %}
+      {% for v in videos %}
       <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
         <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
         <div class="title">{{ v.title }}</div>
@@ -69,7 +69,7 @@
   <div class="row">
     <h2 class="row-title">Trending</h2>
     <div class="small-slider" id="trend-slider">
-      {% for v in videos|shuffle %}
+      {% for v in videos %}
       <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
         <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
         <div class="title">{{ v.title }}</div>
@@ -92,38 +92,68 @@
   <script>
     const BOT_USERNAME = '{{ bot_username }}';
     // Main slider
-    let idx=0; const mTrack=document.getElementById('main-track'); const mCards=mTrack.children;
-    function showMain(i){ idx=(i+ mCards.length)%mCards.length; mTrack.style.transform=`translateX(-${idx*100}%)`; }
-    setInterval(()=>showMain(idx+1),5000);
+    let idx = 0;
+    const mTrack = document.getElementById('main-track');
+    const mCards = mTrack.children;
+    function showMain(i) {
+      idx = (i + mCards.length) % mCards.length;
+      mTrack.style.transform = `translateX(-${idx * 100}%)`;
+    }
+    setInterval(() => showMain(idx + 1), 5000);
+
+    // Shuffle Trending on client
+    function shuffleSlider(id) {
+      const slider = document.getElementById(id);
+      const cards = Array.from(slider.children);
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        slider.append(cards[j]);
+        cards.splice(j, 1);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => shuffleSlider('trend-slider'));
+
     // Card click (both main and small)
-    document.body.addEventListener('click', e=>{
-      const card = e.target.closest('.card, .small-card'); if(!card) return;
-      const thumb=card.getAttribute('data-thumb'), title=card.getAttribute('data-title'), key=card.getAttribute('data-key');
+    document.body.addEventListener('click', e => {
+      const card = e.target.closest('.card, .small-card'); if (!card) return;
+      const thumb = card.getAttribute('data-thumb');
+      const title = card.getAttribute('data-title');
+      const key = card.getAttribute('data-key');
       // populate detail
-      document.getElementById('detail-thumb').src=thumb;
-      document.getElementById('detail-thumb').alt=title;
-      document.getElementById('detail-title').textContent=title;
-      document.getElementById('detail-get').style.display='inline-block';
-      document.getElementById('open-link').style.display='none';
-      document.getElementById('detail-get').onclick = ()=> startTimer(key);
-      // hide galleries
-      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el=>el.style.display='none');
-      document.getElementById('detail-view').style.display='block';
+      document.getElementById('detail-thumb').src = thumb;
+      document.getElementById('detail-thumb').alt = title;
+      document.getElementById('detail-title').textContent = title;
+      document.getElementById('detail-get').style.display = 'inline-block';
+      document.getElementById('open-link').style.display = 'none';
+      document.getElementById('detail-get').disabled = false;
+      document.getElementById('detail-get').onclick = () => startTimer(key);
+      // toggle views
+      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'none');
+      document.getElementById('detail-view').style.display = 'block';
     });
     // Back
-    document.getElementById('back-to-gallery').onclick = ()=>{
-      document.getElementById('detail-view').style.display='none';
-      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el=>el.style.display='block');
+    document.getElementById('back-to-gallery').onclick = () => {
+      document.getElementById('detail-view').style.display = 'none';
+      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'block');
     };
     // Timer -> show link
-    function startTimer(key){
-      const btn=document.getElementById('detail-get'); const link=document.getElementById('open-link');
-      btn.disabled=true; let c=10; btn.textContent=`Wait ${c}s...`;
-      const iv=setInterval(()=>{
+    function startTimer(key) {
+      const btn = document.getElementById('detail-get');
+      const link = document.getElementById('open-link');
+      btn.disabled = true;
+      let c = 10;
+      btn.textContent = `Wait ${c}s...`;
+      const iv = setInterval(() => {
         c--;
-        if(c<=0){ clearInterval(iv); btn.style.display='none'; link.style.display='block'; link.onclick=()=>window.open(`https://t.me/${BOT_USERNAME}?start=${key}`,'_blank'); }
-        else btn.textContent=`Wait ${c}s...`;
-      },1000);
+        if (c <= 0) {
+          clearInterval(iv);
+          btn.style.display = 'none';
+          link.style.display = 'block';
+          link.onclick = () => window.open(`https://t.me/${BOT_USERNAME}?start=${key}`, '_blank');
+        } else {
+          btn.textContent = `Wait ${c}s...`;
+        }
+      }, 1000);
     }
   </script>
 </body>
