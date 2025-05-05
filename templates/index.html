@@ -51,7 +51,7 @@
     {% if v.title not in ns.seen %}
       {% set group = videos | selectattr('title', 'equalto', v.title) | list %}
       {% if group|length > 1 %}
-        {% do ns.seen.append(v.title) %}
+        {% set _ = ns.seen.append(v.title) %}
         <div class="group-title">{{ v.title }}</div>
         <div class="carousel">
           {% for item in group %}
