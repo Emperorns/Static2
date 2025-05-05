@@ -17,7 +17,9 @@ DB_NAME          = os.getenv('DB_NAME')
 ADMIN_ID         = int(os.getenv('ADMIN_ID'))
 CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
 UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')        # e.g. '@updates_channel'
-CAPTCHA_URL      = os.getenv('CAPTCHA_URL')            # URL for captcha verification
+CAPTCHA_URL      = os.getenv('CAPTCHA_URL')            # Link to captcha verification endpoint
+TUTORIAL_URL     = os.getenv('TUTORIAL_URL')           # Tutorial on solving captcha
+LOG_CHANNEL      = os.getenv('LOG_CHANNEL')            # Chat ID or @username for logging verifications
 BOT_USERNAME     = os.getenv('BOT_USERNAME')
 PUBLIC_URL       = os.getenv('PUBLIC_URL')
 PORT             = int(os.getenv('PORT', 5000))
@@ -75,12 +77,11 @@ async def require_access(update: Update, context):
         return False
     # 2. Ensure user has passed captcha within last 2 hours
     if not await is_verified(user_id):
-        captcha_button = InlineKeyboardButton(
-            text="Verify Human", url=CAPTCHA_URL
-        )
-        markup = InlineKeyboardMarkup([[captcha_button]])
+        verify_btn = InlineKeyboardButton(text="Verify Human", url=CAPTCHA_URL)
+        tutorial_btn = InlineKeyboardButton(text="How to Solve Captcha", url=TUTORIAL_URL)
+        markup = InlineKeyboardMarkup([[verify_btn], [tutorial_btn]])
         await update.message.reply_text(
-            "🛡️ Please verify you are human before using the bot (expires in 2 hours).", 
+            "🛡️ Please verify you are human before using the bot (valid for 2 hours).", 
             reply_markup=markup
         )
         return False
@@ -159,16 +160,21 @@ async def start_command(update: Update, context):
             {'$set': {'last_verified': datetime.utcnow()}},
             upsert=True
         )
-        await update.message.reply_text(
-            "✅ Verification successful! You can now use the bot for the next 2 hours."
+        # Log to channel
+        await context.bot.send_message(
+            chat_id=LOG_CHANNEL,
+            text=f"🔐 User {user_id} verified at {datetime.utcnow().isoformat()}"
         )
+        await update.message.reply_text("✅ Verification successful! You can now use the bot for the next 2 hours.")
         return
     # Check membership & captcha
     if not await require_access(update, context):
         return
-    # Serve media if valid key
+    # Serve media if valid key, or send welcome
     if not args:
-        await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.")
+        tutorial_btn = InlineKeyboardButton(text="How to Use This Bot", url=TUTORIAL_URL)
+        markup = InlineKeyboardMarkup([[tutorial_btn]])
+        await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.", reply_markup=markup)
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
