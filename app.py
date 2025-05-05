@@ -72,16 +72,16 @@ async def require_access(update: Update, context):
         )
         markup = InlineKeyboardMarkup([[join_button]])
         await update.message.reply_text(
-            "🚨 You must join our updates channel to use this bot.", reply_markup=markup
+            "🚨 You must join our updates channel to use this bot,then again send /start command. ", reply_markup=markup
         )
         return False
     # 2. Ensure user has passed captcha within last 2 hours
     if not await is_verified(user_id):
-        verify_btn = InlineKeyboardButton(text="Verify Human", url=CAPTCHA_URL)
-        tutorial_btn = InlineKeyboardButton(text="How to Solve Captcha", url=TUTORIAL_URL)
+        verify_btn = InlineKeyboardButton(text="Get file", url=CAPTCHA_URL)
+        tutorial_btn = InlineKeyboardButton(text="How to open✅", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[verify_btn], [tutorial_btn]])
         await update.message.reply_text(
-            "🛡️ Please verify you are human before using the bot (valid for 2 hours).", 
+            "🛡️ click on get file button to download your file. ", 
             reply_markup=markup
         )
         return False
@@ -165,14 +165,14 @@ async def start_command(update: Update, context):
             chat_id=LOG_CHANNEL,
             text=f"🔐 User {user_id} verified at {datetime.utcnow().isoformat()}"
         )
-        await update.message.reply_text("✅ Verification successful! You can now use the bot for the next 2 hours.")
+        await update.message.reply_text("✅ You Earned a token! You can now use the bot for the next 2 hours without any ads. ")
         return
     # Check membership & captcha
     if not await require_access(update, context):
         return
     # Serve media if valid key, or send welcome
     if not args:
-        tutorial_btn = InlineKeyboardButton(text="How to Use This Bot", url=TUTORIAL_URL)
+        tutorial_btn = InlineKeyboardButton(text="Movies", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
         await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.", reply_markup=markup)
         return
