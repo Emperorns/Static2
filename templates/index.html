@@ -13,17 +13,19 @@
     .main-slider .track{display:flex; transition:transform .5s ease;}
     .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden;}
     .main-slider img{width:100%;height:100%;object-fit:cover;}
-    .main-slider .title{position:absolute; bottom:16px; left:16px; font-size:20px; background:rgba(0,0,0,.6); padding:8px 16px; border-radius:8px;}
+    .main-slider .title{position:absolute; bottom:0; left:0; right:0; font-size:24px; background:rgba(0,0,0,0.7); padding:12px 20px; text-align:center;}
+    .nav-arrow{position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5); color:#fff; border:none; padding:10px; cursor:pointer; font-size:18px;}
+    .left-arrow{left:10px;} .right-arrow{right:10px;}
     /* Small Sliders */
     .row { margin-bottom:30px; }
     .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
     .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
-    .small-card{display:inline-block; width:180px; margin-right:12px; cursor:pointer; border-radius:8px; overflow:hidden;}
-    .small-card img{width:100%; height:auto; display:block;}
+    .small-card{display:inline-block; min-width:240px; max-width:30%; margin-right:16px; cursor:pointer; border-radius:8px; overflow:hidden; aspect-ratio:16/9;}
+    .small-card img{width:100%; height:100%; object-fit:cover; display:block;}
     .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd;}
     /* Detail View */
     #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
-    #back-to-gallery{background:none;border:none;color:#e50914;font-size:16px;cursor:pointer;margin-bottom:20px;}
+    #back-to-gallery{background:#e50914; border:none; color:#fff; font-size:16px; cursor:pointer; padding:8px 16px; border-radius:8px; margin-bottom:20px;}
     #detail-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;}
     .actions{margin-top:20px;text-align:center;}
     .btn{background-color:#e50914;color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
@@ -31,6 +33,10 @@
   </style>
 </head>
 <body>
+  <header style="text-align: right; padding: 10px;">
+    <button id="search-btn" style="background: #e50914; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">Search</button>
+  </header>
+
   <h2 class="row-title">Featured</h2>
   <div class="main-slider" id="main-slider">
     <div class="track" id="main-track">
@@ -41,6 +47,8 @@
       </div>
       {% endfor %}
     </div>
+    <button class="nav-arrow left-arrow" id="left-arrow">←</button>
+    <button class="nav-arrow right-arrow" id="right-arrow">→</button>
   </div>
 
   <!-- Recommendation Rows -->
@@ -89,8 +97,23 @@
     </div>
   </div>
 
+  <!-- Search Slide -->
+  <div id="search-slide" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box;">
+    <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+    <h2 style="text-align: center; margin-bottom: 20px;">Search Videos</h2>
+    <input type="text" id="search-input" placeholder="Search by title..." style="width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none;">
+    <div id="search-results" class="small-slider"></div>
+  </div>
+
   <script>
     const BOT_USERNAME = '{{ bot_username }}';
+    // Collect video data
+    const videos = Array.from(document.querySelectorAll('.card, .small-card')).map(card => ({
+      thumb: card.getAttribute('data-thumb'),
+      title: card.getAttribute('data-title'),
+      key: card.getAttribute('data-key')
+    }));
+
     // Main slider
     let idx = 0;
     const mTrack = document.getElementById('main-track');
@@ -100,6 +123,8 @@
       mTrack.style.transform = `translateX(-${idx * 100}%)`;
     }
     setInterval(() => showMain(idx + 1), 5000);
+    document.getElementById('left-arrow').onclick = () => showMain(idx - 1);
+    document.getElementById('right-arrow').onclick = () => showMain(idx + 1);
 
     // Shuffle Trending on client
     function shuffleSlider(id) {
@@ -141,7 +166,7 @@
       const btn = document.getElementById('detail-get');
       const link = document.getElementById('open-link');
       btn.disabled = true;
-      let c = 10;
+      let c = 5; // Reduced from 10s to 5s
       btn.textContent = `Wait ${c}s...`;
       const iv = setInterval(() => {
         c--;
@@ -155,6 +180,32 @@
         }
       }, 1000);
     }
+
+    // Search functionality
+    document.getElementById('search-btn').onclick = () => {
+      document.getElementById('search-slide').style.display = 'block';
+    };
+    document.getElementById('close-search').onclick = () => {
+      document.getElementById('search-slide').style.display = 'none';
+    };
+    document.getElementById('search-input').oninput = () => {
+      const term = document.getElementById('search-input').value.toLowerCase();
+      const results = videos.filter(v => v.title.toLowerCase().includes(term));
+      const resultsContainer = document.getElementById('search-results');
+      resultsContainer.innerHTML = '';
+      results.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'small-card';
+        card.setAttribute('data-thumb', v.thumb);
+        card.setAttribute('data-title', v.title);
+        card.setAttribute('data-key', v.key);
+        card.innerHTML = `
+          <img src="${v.thumb}" alt="${v.title}">
+          <div class="title">${v.title}</div>
+        `;
+        resultsContainer.appendChild(card);
+      });
+    };
   </script>
 </body>
 </html>
