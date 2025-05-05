@@ -173,7 +173,7 @@ async def start_command(update: Update, context):
         return
     # Serve media if valid key, or send welcome
     if not args:
-        tutorial_btn = InlineKeyboardButton(text="Movies", url=TUTORIAL_URL)
+        tutorial_btn = InlineKeyboardButton(text="Movies", url=H_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
         await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.", reply_markup=markup)
         return
