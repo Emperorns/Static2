@@ -20,14 +20,13 @@
 
         /* Header */
         header {
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; align-items: center; justify-content: center;
             padding: 10px 12px; background: var(--bg);
             position: sticky; top: 0; z-index: 100;
         }
-        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent); text-align: center; flex: 1; }
-        .search { display: flex; align-items: center; }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent); text-align: center; }
+        .search { position: absolute; right: 12px; display: flex; align-items: center; }
         .search-btn { background: none; border: none; color: var(--fg); font-size: 1rem; cursor: pointer; }
-        .user-profile img { width: 28px; height: 28px; border-radius: 50%; }
 
         /* Hero Section */
         .hero {
@@ -58,11 +57,10 @@
         }
         .hero-content p { font-size: 0.8rem; margin-bottom: 8px; }
         .hero-content button {
-            padding: 6px 12px; margin-right: 6px; border: none;
+            padding: 6px 12px; border: none;
             background: var(--accent); color: var(--fg); border-radius: var(--radius);
             cursor: pointer; font-size: 0.8rem;
         }
-        .hero-content button.secondary { background: transparent; border: 1px solid var(--fg); }
 
         /* Content Sections */
         .content-section { margin: 15px 12px; }
@@ -75,7 +73,7 @@
         .scroll-container::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
         .thumbnail {
             display: inline-flex; flex-direction: column;
-            min-width: 45vw; cursor: pointer; border-radius: var(--radius);
+            min-width: 35vw; cursor: pointer; border-radius: var(--radius);
             overflow: hidden;
         }
         .thumbnail .image-container { aspect-ratio: 9/16; position: relative; }
@@ -84,6 +82,21 @@
             font-size: 0.8rem; text-align: center; padding: 6px 0;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+
+        /* Endless Files Section */
+        .endless-files {
+            margin: 15px 12px;
+        }
+        .endless-files h2 { font-size: 1rem; margin-bottom: 10px; }
+        .vertical-scroll {
+            display: flex; flex-direction: column; gap: var(--gap);
+            max-height: 100vh; overflow-y: auto; padding-bottom: 20px;
+        }
+        .vertical-scroll .thumbnail {
+            min-width: unset; width: 90vw; margin: 0 auto;
+        }
+        .vertical-scroll::-webkit-scrollbar { width: 4px; }
+        .vertical-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 
         /* Detail Overlay */
         #detail-page {
@@ -134,9 +147,6 @@
 </head>
 <body>
     <header>
-        <div class="user-profile">
-            <img src="https://via.placeholder.com/28" alt="User Profile">
-        </div>
         <div class="logo">Prime Video</div>
         <div class="search">
             <button class="search-btn">🔍</button>
@@ -177,6 +187,20 @@
     <section class="content-section">
         <h2>All Movies</h2>
         <div class="scroll-container" id="all-movies-slider">
+            {% for v in videos %}
+            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+                <div class="image-container">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+                </div>
+                <div class="title">{{ v.title }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="endless-files">
+        <h2>Endless Files</h2>
+        <div class="vertical-scroll" id="endless-files-slider">
             {% for v in videos %}
             <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
                 <div class="image-container">
