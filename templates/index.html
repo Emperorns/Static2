@@ -1,235 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SimpleStream</title>
-  <style>
-    /* Global Variables */
-    :root {
-      --bg: #000;
-      --fg: #fff;
-      --radius: 8px;
-      --gap: 12px;
-      --transition: 0.3s;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--fg); font-family: sans-serif; }
-    a { color: inherit; text-decoration: none; }
-
-    /* Header */
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px;
-      background: var(--bg);
-      position: sticky; top: 0; z-index: 100;
-    }
-    .logo { font-size: 1.5rem; font-weight: bold; }
-    .search-bar {
-      flex: 1; max-width: 400px;
-      margin: 0 16px;
-    }
-    .search-bar input {
-      width: 100%; padding: 8px 12px;
-      background: var(--bg); border: 1px solid var(--fg);
-      color: var(--fg); border-radius: var(--radius);
-      font-size: 1rem;
-    }
-
-    /* Scrollers */
-    .scroller {
-      overflow-x: auto; scroll-snap-type: x mandatory;
-      display: flex; gap: var(--gap); padding: 16px 0;
-    }
-    .scroller::-webkit-scrollbar { display: none; }
-    .slide,
-    .big-slide,
-    .grid-item { flex: 0 0 auto; scroll-snap-align: start; border-radius: var(--radius); overflow: hidden; }
-    /* 1. Auto scroller 16:9 */
-    .slide { width: 80vw; aspect-ratio: 16/9; background: #333; }
-    /* 2. Big slide row: 1/3 height of above */
-    .big-slide { width: 50vw; aspect-ratio: 16/9; background: #444; }
-    /* 3. Grid rows: two in line each row */
-    .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap); padding-bottom: 16px; }
-    .grid-item { width: 100%; aspect-ratio: 16/9; background: #555; }
-
-    /* Thumbnail Images */
-    .slide img,
-    .big-slide img,
-    .grid-item img {
-      width: 100%; height: 100%; object-fit: cover;
-      display: block;
-    }
-
-    /* Detail Page Overlay */
-    #detail-page {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-      display: none; flex-direction: column; align-items: center;
-      justify-content: center; padding: 24px; z-index: 200;
-    }
-    #detail-page.open { display: flex; }
-    #detail-content {
-      background: var(--bg); padding: 24px; border-radius: var(--radius);
-      max-width: 90%; width: 400px; text-align: center;
-    }
-    #detail-content img { width: 100%; border-radius: var(--radius); margin-bottom: 16px; }
-    .btn { margin-top: 12px; padding: 8px 16px; border: 1px solid var(--fg);
-      background: transparent; color: var(--fg); border-radius: var(--radius);
-      cursor: pointer; transition: background var(--transition); }
-    .btn:hover { background: var(--fg); color: var(--bg); }
-    #timer { margin-top: 8px; }
-
-    /* Search Overlay */
-    #search-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
-      display: none; flex-direction: column; padding: 24px; z-index: 150;
-    }
-    #search-overlay.open { display: flex; }
-    #search-overlay input { padding: 8px; margin-bottom: 16px;
-      border: 1px solid var(--fg); border-radius: var(--radius);
-      background: var(--bg); color: var(--fg); }
-    #search-results { flex: 1; overflow-y: auto; display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--gap); }
-    #search-results .grid-item { aspect-ratio: 16/9; }
-
-    /* Navigation Arrows */
-    .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.5); color: #fff; border: none; padding: 8px; cursor: pointer; font-size: 16px; border-radius: 50%; }
-    .left-arrow { left: 8px; } .right-arrow { right: 8px; }
-
-    /* Responsive Adjustments */
-    @media(min-width:600px){
-      .slide { width: 60vw; }
-      .big-slide { width: 30vw; }
-      .grid-container { grid-template-columns: repeat(3, 1fr); }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="logo">SimpleStream</div>
-    <div class="search-bar">
-      <input type="text" id="header-search" placeholder="Search...">
-    </div>
-  </header>
-
-  <!-- 1: Auto scroller 16:9 -->
-  <div class="scroller" id="primary-scroller">
-    {% for v in videos %}
-    <div class="slide" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-      <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-    </div>
-    {% endfor %}
-    <button class="nav-arrow left-arrow" id="left-arrow">←</button>
-    <button class="nav-arrow right-arrow" id="right-arrow">→</button>
-  </div>
-
-  <!-- 2: Big slide scroller -->
-  <div class="scroller" id="big-scroller">
-    {% for v in videos %}
-    <div class="big-slide" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-      <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-    </div>
-    {% endfor %}
-  </div>
-
-  <!-- 3: Grid rows endless (Trending) -->
-  <div class="grid-container" id="trend-grid">
-    {% for v in videos %}
-    <div class="grid-item" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-      <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-    </div>
-    {% endfor %}
-  </div>
-
-  <!-- Detail Page -->
-  <div id="detail-page">
-    <div id="detail-content">
-      <img id="detail-thumb" src="" alt="">
-      <h2 id="detail-title"></h2>
-      <button class="btn" id="get-file">Get File</button>
-      <div id="timer"></div>
-      <button class="btn" id="open-link" style="display:none;">Open File</button>
-      <button class="btn" id="close-detail">Close</button>
-    </div>
-  </div>
-
-  <!-- Search Overlay -->
-  <div id="search-overlay">
-    <input type="text" id="overlay-search" placeholder="Search...">
-    <div id="search-results"></div>
-    <button class="btn" id="close-search">Close</button>
-  </div>
-
-  <script>
-    const BOT_USERNAME = '{{ bot_username }}';
-
-    // Collect video data
-    const videos = Array.from(document.querySelectorAll('.slide, .big-slide, .grid-item')).map(item => ({
-      thumb: item.getAttribute('data-thumb'),
-      title: item.getAttribute('data-title'),
-      key: item.getAttribute('data-key')
-    }));
-
-    // Main Slider Auto-scroll
-    let idx = 0;
-    const mTrack = document.getElementById('primary-scroller');
-    const mCards = mTrack.querySelectorAll('.slide');
-    function showMain(i) {
-      idx = (i + mCards.length) % mCards.length;
-      mTrack.style.transform = `translateX(-${idx * (100 + (var(--gap) / window.innerWidth * 100))}%)`;
-    }
-    setInterval(() => showMain(idx + 1), 5000);
-    document.getElementById('left-arrow').onclick = () => showMain(idx - 1);
-    document.getElementById('right-arrow').onclick = () => showMain(idx + 1);
-
-    // Shuffle Trending Grid
-    function shuffleGrid(id) {
-      const grid = document.getElementById(id);
-      const items = Array.from(grid.children);
-      for (let i = items.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        grid.append(items[j]);
-        items.splice(j, 1);
-      }
-    }
-    document.addEventListener('DOMContentLoaded', () => shuffleGrid('trend-grid'));
-
-    // Card Click
-    document.body.addEventListener('click', e => {
-      const item = e.target.closest('.slide, .big-slide, .grid.Requirements
-To create an exact Prime Video homepage structure that you can copy and paste, while ensuring it integrates the functionalities from your previous `index.html` (e.g., Telegram bot integration, auto-scrolling main slider, shuffled trending slider, detail view with timer, and search functionality), I'll design an HTML file that mirrors the Prime Video layout and style, tailored for mobile compatibility, and includes all your specified requirements. The structure will be complete, including CSS and JavaScript, so you can copy and paste it directly.
-
-### Prime Video Homepage Structure
-The Prime Video homepage typically features:
-- **Header**: A sticky header with a logo (Prime Video), navigation links (Home, TV Shows, Movies, Kids), a search icon, and a user profile icon.
-- **Hero Section**: A full-width featured banner with a large thumbnail, title, description, and action buttons (Watch Now, Add to Watchlist).
-- **Content Sections**: Multiple horizontal scrollable rows (e.g., Recommended, New Releases, Trending) with thumbnails and titles below them.
-- **Footer**: Links to About, Help, and Terms of Use, with a copyright notice.
-- **Mobile Optimization**: Rounded corners, large cropped thumbnails, and a mobile-first layout.
-
-### Your Requirements
-1. **Exact Prime Video Structure**: The design will replicate the Prime Video homepage with rounded corners, a prominent search feature, horizontal scrollers, and titles below thumbnails.
-2. **Thumbnails**: Thumbnails should fit their containers, cropped if necessary (`object-fit: cover`).
-3. **Functionalities from Previous `index.html`**:
-   - Auto-scrolling main slider (5 seconds, with navigation arrows).
-   - Shuffled trending slider on page load.
-   - Detail view with a 5-second timer leading to a Telegram bot link.
-   - Search functionality filtering by title, with clickable results that open the detail view.
-   - Card click behavior to open the detail view with thumbnail, title, and Telegram key.
-4. **Mobile Compatibility**: The design will prioritize mobile devices, with larger thumbnails, touch-friendly scrollers, and responsive layouts.
-5. **No UI Changes to Provided Structure**: Since you requested the exact Prime Video structure, I'll adapt the functionalities to fit the new design, ensuring the UI aligns with Prime Video's aesthetic.
-
-### Implementation
-The following `index.html` file includes:
-- A mobile-optimized Prime Video layout with a header, hero section, content rows, and footer.
-- CSS for rounded corners, large cropped thumbnails, and horizontal scrollers.
-- JavaScript to implement the required functionalities (auto-scrolling, shuffling, detail view, search).
-- Integration of your Telegram bot logic with the `BOT_USERNAME` and `custom_key` for links.
-
-<xaiArtifact artifact_id="73686a24-cac4-4b20-962c-1e5e6895cc18" artifact_version_id="9f553d93-05f3-42b7-807a-8aba69b3f5e9" title="index.html" contentType="text/html">
-<!DOCTYPE html>
-<html lang="en">
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prime Video</title>
@@ -264,15 +35,23 @@ The following `index.html` file includes:
         /* Hero Section */
         .hero {
             position: relative; width: 100%; aspect-ratio: 16/9;
-            background-size: cover; background-position: center;
-            border-radius: var(--radius); margin: 16px 0;
+            overflow: hidden; border-radius: var(--radius); margin: 16px 0;
+        }
+        .hero .track {
+            display: flex; transition: transform 0.5s ease;
+        }
+        .hero-slide {
+            flex: 0 0 100%; background-size: cover; background-position: center;
+            display: flex; flex-direction: column; align-items: center;
         }
         .hero-content {
-            position: absolute; bottom: 20px; left: 20px;
-            max-width: 90%; background: rgba(0,0,0,0.7);
-            padding: 16px; border-radius: var(--radius);
+            width: 100%; background: rgba(0,0,0,0.7); padding: 16px;
+            text-align: center;
         }
-        .hero-content h1 { font-size: 1.5rem; margin-bottom: 8px; }
+        .hero-content h1 {
+            font-size: 1.5rem; margin-bottom: 8px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .hero-content p { font-size: 0.9rem; margin-bottom: 12px; }
         .hero-content button {
             padding: 8px 16px; margin-right: 8px; border: none;
@@ -402,8 +181,8 @@ The following `index.html` file includes:
     </section>
 
     <section class="content-section">
-        <h2>Recommended for You</h2>
-        <div class="scroll-container" id="recommended-slider">
+        <h2>Latest</h2>
+        <div class="scroll-container" id="latest-slider">
             {% for v in videos %}
             <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
                 <div class="image-container">
@@ -416,22 +195,8 @@ The following `index.html` file includes:
     </section>
 
     <section class="content-section">
-        <h2>New Releases</h2>
-        <div class="scroll-container" id="new-releases-slider">
-            {% for v in videos %}
-            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-                <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-                </div>
-                <div class="title">{{ v.title }}</div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="content-section">
-        <h2>Trending Now</h2>
-        <div class="scroll-container" id="trending-slider">
+        <h2>All Movies</h2>
+        <div class="scroll-container" id="all-movies-slider">
             {% for v in videos %}
             <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
                 <div class="image-container">
@@ -487,25 +252,31 @@ The following `index.html` file includes:
             idx = (i + heroSlides.length) % heroSlides.length;
             heroTrack.style.transform = `translateX(-${idx * 100}%)`;
         }
-        setInterval(() => showHero(idx + 1), 5000);
-        document.getElementById('left-arrow').onclick = () => showHero(idx - 1);
-        document.getElementById('right-arrow').onclick = () => showHero(idx + 1);
+        // Auto-scroll every 5 seconds
+        const autoScroll = setInterval(() => showHero(idx + 1), 5000);
+        document.getElementById('left-arrow').onclick = () => {
+            clearInterval(autoScroll); // Stop auto-scroll on manual navigation
+            showHero(idx - 1);
+        };
+        document.getElementById('right-arrow').onclick = () => {
+            clearInterval(autoScroll); // Stop auto-scroll on manual navigation
+            showHero(idx + 1);
+        };
 
-        // Shuffle Trending Slider
+        // Shuffle All Movies Slider
         function shuffleSlider(id) {
             const slider = document.getElementById(id);
             const items = Array.from(slider.children);
             for (let i = items.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                slider.append(items[j]);
-                items.splice(j, 1);
+                slider.appendChild(items[j]);
             }
         }
-        document.addEventListener('DOMContentLoaded', () => shuffleSlider('trending-slider'));
+        document.addEventListener('DOMContentLoaded', () => shuffleSlider('all-movies-slider'));
 
-        // Card Click (Hero and Thumbnails)
+        // Thumbnail Click
         document.body.addEventListener('click', e => {
-            const item = e.target.closest('.hero-slide, .thumbnail, .watch-now');
+            const item = e.target.closest('.hero-slide, .thumbnail');
             if (!item) return;
             const thumb = item.getAttribute('data-thumb');
             const title = item.getAttribute('data-title');
@@ -515,6 +286,7 @@ The following `index.html` file includes:
             document.getElementById('get-file').style.display = 'inline-block';
             document.getElementById('open-link').style.display = 'none';
             document.getElementById('get-file').disabled = false;
+            document.getElementById('timer').textContent = '';
             document.getElementById('get-file').onclick = () => startTimer(key);
             document.getElementById('detail-page').classList.add('open');
         });
@@ -549,9 +321,12 @@ The following `index.html` file includes:
         // Search Functionality
         document.querySelector('.search-btn').onclick = () => {
             document.getElementById('search-overlay').classList.add('open');
+            document.getElementById('overlay-search').focus();
         };
         document.getElementById('close-search').onclick = () => {
             document.getElementById('search-overlay').classList.remove('open');
+            document.getElementById('overlay-search').value = '';
+            document.getElementById('search-results').innerHTML = '';
         };
         document.getElementById('overlay-search').oninput = () => {
             const term = document.getElementById('overlay-search').value.toLowerCase();
