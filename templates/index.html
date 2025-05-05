@@ -20,96 +20,117 @@
     a { color: inherit; text-decoration: none; }
     img { display: block; width: 100%; }
 
-    /* ==== Header ==== */
+    /* ==== Header & Mobile Nav ==== */
     header {
       position: sticky; top: 0; z-index: 1000;
       background: var(--bg-secondary);
-      padding: 12px 24px;
-      display: flex; align-items: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
     }
-    .logo { font-size: 1.6rem; font-weight: 700; color: var(--accent); margin-right: 2rem; }
-    nav ul { display: flex; list-style: none; gap: 1.5rem; }
+    .logo { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    nav { display: flex; align-items: center; }
+    nav ul {
+      display: flex; list-style: none; gap: 1rem;
+    }
     nav li { font-size: 0.9rem; color: var(--text-secondary); cursor: pointer; transition: color var(--transition); }
     nav li:hover { color: var(--text-primary); }
-    #search-btn { margin-left: auto; background: none; border: none; font-size: 1.2rem; color: var(--text-secondary); cursor: pointer; transition: color var(--transition); }
-    #search-btn:hover { color: var(--accent); }
+    #search-btn, #menu-btn {
+      background: none; border: none; font-size: 1.4rem; color: var(--text-secondary);
+      cursor: pointer; transition: color var(--transition);
+      margin-left: 0.5rem;
+    }
+    #search-btn:hover, #menu-btn:hover { color: var(--accent); }
+    /* Mobile nav panel */
+    #mobile-nav {
+      position: fixed; top: 0; left: -100%; width: 70%; height: 100%; background: var(--bg-secondary);
+      transition: left var(--transition);
+      padding: 2rem 1rem;
+      display: flex; flex-direction: column;
+      gap: 1.5rem;
+      z-index: 1100;
+    }
+    #mobile-nav.open { left: 0; }
 
     /* ==== Hero Carousel ==== */
-    .hero { position: relative; overflow: hidden; margin-top: 1rem; }
-    .hero .slides { display: flex; transition: transform 0.6s ease; }
-    .hero .slide { flex: 0 0 100%; position: relative; }
-    .hero img { border-radius: var(--radius); filter: brightness(0.8); transition: filter var(--transition); }
-    .hero img:hover { filter: brightness(1); }
-    .hero .caption {
-      position: absolute; bottom: 16px; left: 16px;
-      background: rgba(0,0,0,0.6); padding: 12px 16px;
-      border-radius: var(--radius); font-size: 1.4rem;
+    .hero { position: relative; overflow: hidden; margin: 1rem 0; }
+    .slides { display: flex; transition: transform 0.6s ease; }
+    .slide { flex: 0 0 100%; position: relative; }
+    .slide img { border-radius: var(--radius); filter: brightness(0.8); transition: filter var(--transition); }
+    .slide img:hover { filter: brightness(1); }
+    .caption {
+      position: absolute; bottom: 12px; left: 12px;
+      background: rgba(0,0,0,0.6); padding: 8px 12px;
+      border-radius: var(--radius); font-size: 1.2rem;
     }
-    .hero .arrow {
+    .arrow {
       position: absolute; top: 50%; transform: translateY(-50%);
-      background: rgba(0,0,0,0.5); border: none; padding: 8px;
+      background: rgba(0,0,0,0.5); border: none; padding: 6px;
       color: var(--accent); cursor: pointer; border-radius: 50%; font-size: 1.2rem;
       transition: background var(--transition);
     }
-    .hero .arrow:hover { background: rgba(0,0,0,0.8); }
-    .hero .prev { left: 16px; }
-    .hero .next { right: 16px; }
+    .arrow:hover { background: rgba(0,0,0,0.8); }
+    .prev { left: 12px; }
+    .next { right: 12px; }
 
     /* ==== Rows ==== */
-    section { margin: 2rem 0; }
-    h2 { font-size: 1.1rem; margin: 0 24px 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
-    .row-container { display: flex; overflow-x: auto; gap: 16px; padding-left: 24px; }
-    .row-container::-webkit-scrollbar { height: 6px; }
+    section { margin: 1.5rem 0; }
+    h2 { font-size: 1rem; margin: 0 16px 0.5rem; color: var(--text-secondary); text-transform: uppercase; }
+    .row-container { display: flex; overflow-x: auto; gap: 12px; padding: 0 16px; }
+    .row-container::-webkit-scrollbar { height: 5px; }
     .row-container::-webkit-scrollbar-thumb { background: var(--text-secondary); border-radius: 3px; }
     .card {
-      flex: 0 0 160px;
-      background: var(--bg-secondary);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.7);
-      cursor: pointer;
-      transition: transform var(--transition), box-shadow var(--transition);
+      flex: 0 0 45%; /* two per row on mobile */
+      max-width: 45%;
+      background: var(--bg-secondary); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+      cursor: pointer; transition: transform var(--transition), box-shadow var(--transition);
     }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
-    .card img { height: 90px; object-fit: cover; }
-    .card .title { padding: 8px; font-size: 0.9rem; color: var(--text-primary); }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.8); }
+    .card img { height: 100px; object-fit: cover; }
+    .card .title { padding: 6px 8px; font-size: 0.85rem; color: var(--text-primary); }
 
     /* ==== Detail Overlay ==== */
     #detail-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85); display: none;
-      justify-content: center; align-items: center; padding: 24px;
-      z-index: 2000;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+      display: none; justify-content: center; align-items: center;
+      padding: 16px; z-index: 2000;
     }
-    #detail-card {
-      background: var(--bg-secondary); border-radius: var(--radius);
-      max-width: 700px; width: 100%; overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.8);
-      animation: fadeIn 0.4s ease;
-    }
-    #detail-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; }
-    #close-detail { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; transition: color var(--transition); }
-    #close-detail:hover { color: var(--accent); }
+    #detail-overlay.open { display: flex; }
+    #detail-card { width: 100%; max-width: 600px; background: var(--bg-secondary); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
+    #detail-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; }
+    #close-detail { background: none; border: none; font-size: 1.3rem; color: var(--text-secondary); cursor: pointer; }
     #detail-thumb { width: 100%; height: auto; }
-    #detail-info { padding: 16px; }
-    #detail-title { font-size: 1.5rem; margin-bottom: 12px; }
-    .actions { display: flex; gap: 12px; }
-    .btn { background: var(--accent); border: none; padding: 10px 20px; border-radius: var(--radius); color: #fff; font-size: 0.9rem; cursor: pointer; transition: background var(--transition); }
-    .btn:hover { background: #c70f0f; }
+    #detail-info { padding: 12px; }
+    #detail-title { font-size: 1.3rem; margin-bottom: 8px; }
+    .actions { display: flex; gap: 8px; }
+    .btn { background: var(--accent); border: none; padding: 8px 16px; border-radius: var(--radius);
+      color: #fff; font-size: 0.9rem; cursor: pointer; }
+    .btn:disabled { opacity: 0.6; cursor: default; }
     #open-link { color: var(--accent); text-decoration: underline; align-self: center; cursor: pointer; }
 
     /* ==== Search Modal ==== */
-    #search-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 1500; padding: 40px 24px; }
-    #search-modal #close-search { position: absolute; top: 24px; right: 24px; background: none; border: none; font-size: 1.8rem; color: var(--text-secondary); cursor: pointer; }
-    #search-modal #search-input { width: 100%; padding: 12px; border-radius: var(--radius); border: none; font-size: 1rem; margin-bottom: 24px; }
-    #search-results { display: flex; flex-wrap: wrap; gap: 16px; }
+    #search-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+      display: none; z-index: 1500; padding: 32px 16px; overflow-y: auto; }
+    #search-modal.open { display: block; }
+    #search-modal #close-search { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 1.6rem; color: var(--text-secondary); }
+    #search-input { width: 100%; padding: 12px; border-radius: var(--radius); border: none; font-size: 1rem; margin-bottom: 16px; }
+    #search-results { display: flex; flex-wrap: wrap; gap: 12px; }
+
+    /* ==== Media Queries ==== */
+    @media(min-width: 600px) {
+      .card { flex: 0 0 30%; max-width: 30%; }
+      .row-container { padding: 0 24px; }
+    }
+    @media(min-width: 900px) {
+      .card { flex: 0 0 22%; max-width: 22%; }
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="logo">HotClone</div>
-    <nav>
+    <nav id="desktop-nav">
       <ul>
         <li>Home</li>
         <li>TV Shows</li>
@@ -119,10 +140,22 @@
       </ul>
     </nav>
     <button id="search-btn">🔍</button>
+    <button id="menu-btn">☰</button>
   </header>
 
+  <!-- Mobile Nav Panel -->
+  <div id="mobile-nav">
+    <ul>
+      <li>Home</li>
+      <li>TV Shows</li>
+      <li>Movies</li>
+      <li>Sports</li>
+      <li>My List</li>
+    </ul>
+  </div>
+
   <!-- Hero Carousel -->
-  <div class="hero" id="hero">
+  <div class="hero">
     <button class="arrow prev" id="prev">‹</button>
     <div class="slides" id="slides">
       {% for v in videos %}
@@ -139,28 +172,44 @@
   <section>
     <h2>Recommended</h2>
     <div class="row-container" id="rec-row">
-      {% for v in videos %}<div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}"><div class="title">{{ v.title }}</div>
-      </div>{% endfor %}
+      {% for v in videos %}
+      <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="title">{{ v.title }}</div>
+      </div>
+      {% endfor %}
     </div>
   </section>
   <section>
     <h2>New Releases</h2>
-    <div class="row-container" id="new-row">{% for v in videos %}<div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}"><div class="title">{{ v.title }}</div>
-      </div>{% endfor %}</div>
+    <div class="row-container" id="new-row">
+      {% for v in videos %}
+      <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="title">{{ v.title }}</div>
+      </div>
+      {% endfor %}
+    </div>
   </section>
   <section>
     <h2>Trending</h2>
-    <div class="row-container" id="trend-row">{% for v in videos %}<div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}"><div class="title">{{ v.title }}</div>
-      </div>{% endfor %}</div>
+    <div class="row-container" id="trend-row">
+      {% for v in videos %}
+      <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="title">{{ v.title }}</div>
+      </div>
+      {% endfor %}
+    </div>
   </section>
 
   <!-- Detail Overlay -->
   <div id="detail-overlay">
     <div id="detail-card">
-      <div id="detail-header"><span id="detail-title"></span><button id="close-detail">×</button></div>
+      <div id="detail-header">
+        <span id="detail-title"></span>
+        <button id="close-detail">×</button>
+      </div>
       <img id="detail-thumb" alt="">
       <div id="detail-info">
         <div class="actions">
@@ -179,27 +228,25 @@
   </div>
 
   <script>
-    // Data
-    const videos = Array.from(document.querySelectorAll('.slide, .card')).map(el => ({ thumb: el.dataset.thumb, title: el.dataset.title, key: el.dataset.key }));
+    // Mobile nav toggle
+    document.getElementById('menu-btn').onclick = () => document.getElementById('mobile-nav').classList.toggle('open');
     // Hero Carousel
-    let current = 0;
-    const slides = document.getElementById('slides');
-    const total = slides.children.length;
+    let current = 0; const slides = document.getElementById('slides'); const total = slides.children.length;
     document.getElementById('next').onclick = () => { current = (current+1)%total; slides.style.transform = `translateX(-${100*current}%)`; };
     document.getElementById('prev').onclick = () => { current = (current-1+total)%total; slides.style.transform = `translateX(-${100*current}%)`; };
     setInterval(() => document.getElementById('next').click(), 5000);
-    // Card click -> detail
+    // Detail
     function openDetail(thumb,title,key){ document.getElementById('detail-thumb').src=thumb; document.getElementById('detail-title').textContent=title;
       document.getElementById('detail-get').onclick=()=>startTimer(key);
-      document.getElementById('detail-overlay').style.display='flex'; }
-    document.body.addEventListener('click',e=>{ const c=e.target.closest('.slide, .card'); if(!c)return; openDetail(c.dataset.thumb,c.dataset.title,c.dataset.key); });
-    document.getElementById('close-detail').onclick=()=>document.getElementById('detail-overlay').style.display='none';
+      document.getElementById('detail-overlay').classList.add('open'); }
+    document.body.addEventListener('click',e=>{ const c=e.target.closest('.slide, .card'); if(c) openDetail(c.dataset.thumb,c.dataset.title,c.dataset.key); });
+    document.getElementById('close-detail').onclick=()=>document.getElementById('detail-overlay').classList.remove('open');
     // Timer
-    function startTimer(key){ const btn=document.getElementById('detail-get'), link=document.getElementById('open-link'); btn.disabled=true; let c=5; btn.textContent=`Wait ${c}s...`; const iv=setInterval(()=>{c--; if(c<=0){clearInterval(iv); btn.style.display='none'; link.style.display='block'; link.onclick=()=>window.open(`https://t.me/${'{{ bot_username }}'}?start=${key}`,'_blank');}else btn.textContent=`Wait ${c}s...`;},1000);}    
+    function startTimer(key){ const btn=document.getElementById('detail-get'), link=document.getElementById('open-link'); btn.disabled=true; let c=5; btn.textContent=`Wait ${c}s...`; const iv=setInterval(()=>{c--; if(c<=0){clearInterval(iv); btn.style.display='none'; link.style.display='block'; link.onclick=()=>window.open(`https://t.me/{{ bot_username }}?start=${key}`,'_blank');}else btn.textContent=`Wait ${c}s...`;},1000);}    
     // Search
-    document.getElementById('search-btn').onclick=()=>document.getElementById('search-modal').style.display='block';
-    document.getElementById('close-search').onclick=()=>document.getElementById('search-modal').style.display='none';
-    document.getElementById('search-input').oninput=()=>{ const term=document.getElementById('search-input').value.toLowerCase(); const res=videos.filter(v=>v.title.toLowerCase().includes(term)); const cont=document.getElementById('search-results'); cont.innerHTML=''; res.forEach(v=>{ const card=document.createElement('div'); card.className='card'; card.dataset.thumb=v.thumb; card.dataset.title=v.title; card.dataset.key=v.key; card.innerHTML=`<img src="${v.thumb}"><div class="title">${v.title}</div>`; cont.appendChild(card); });};
+    document.getElementById('search-btn').onclick=() => document.getElementById('search-modal').classList.add('open');
+    document.getElementById('close-search').onclick=() => document.getElementById('search-modal').classList.remove('open');
+    document.getElementById('search-input').oninput=()=>{ const term = document.getElementById('search-input').value.toLowerCase(); const res=Array.from(document.querySelectorAll('.slide, .card')).map(el=>({thumb:el.dataset.thumb,title:el.dataset.title,key:el.dataset.key})).filter(v=>v.title.toLowerCase().includes(term)); const cont=document.getElementById('search-results'); cont.innerHTML=''; res.forEach(v=>{ const card=document.createElement('div'); card.className='card'; card.dataset.thumb=v.thumb; card.dataset.title=v.title; card.dataset.key=v.key; card.innerHTML=`<img src="${v.thumb}"><div class="title">${v.title}</div>`; cont.appendChild(card); }); };
   </script>
 </body>
 </html>
