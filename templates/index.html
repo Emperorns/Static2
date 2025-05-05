@@ -1,63 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Media Gallery</title>
   <style>
     /* Base */
-    body { font-family:'Helvetica Neue',Arial,sans-serif; margin:0; background:#141414; color:#fff; }
-    .header { position:sticky; top:0; display:flex; justify-content:flex-end; padding:16px; background:#1f1f1f; z-index:100; }
-    .search-btn { background:#333; border:none; width:40px; height:40px; border-radius:50%; font-size:20px; color:#fff; cursor:pointer; }
-    /* Slide-out Search Panel */
-    #search-panel { position:fixed; top:0; right:-100%; width:300px; height:100vh; background:#000; box-shadow:-2px 0 8px rgba(0,0,0,0.7); transition:right .3s ease; padding:20px; z-index:200; overflow-y:auto; }
-    #search-panel.open { right:0; }
-    #search-panel header { display:flex; justify-content:space-between; align-items:center; }
-    #search-panel h3 { margin:0; color:#e50914; }
-    #search-panel #close-search { background:none; border:none; font-size:24px; color:#fff; cursor:pointer; }
-    #search-input { width:100%; padding:10px; font-size:16px; border:none; border-radius:4px; margin:16px 0; background:#333; color:#fff; }
-    #search-results { display:flex; flex-wrap:wrap; gap:12px; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin:0; padding:20px; background:#141414; color:#fff; }
+    h2.row-title { font-size:18px; margin:20px 0 10px; text-transform:uppercase; letter-spacing:1px; }
     /* Main Slider */
-    .main-slider { position:relative; width:100%; overflow:hidden; }
-    .main-slider .track { display:flex; transition:transform .5s ease; }
-    .main-slider .card { flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden; }
-    .main-slider img { width:100%; height:100%; object-fit:cover; }
-    .main-slider .title { position:absolute; bottom:0; width:100%; padding:12px; background:rgba(0,0,0,0.6); font-size:18px; text-align:center; }
+    .main-slider{position:relative; width:100%; overflow:hidden; border-radius:12px;}
+    .main-slider .track{display:flex; transition:transform .5s ease;}
+    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden;}
+    .main-slider img{width:100%;height:100%;object-fit:cover;}
+    .main-slider .title{position:absolute; bottom:16px; left:16px; font-size:20px; background:rgba(0,0,0,.6); padding:8px 16px; border-radius:8px;}
     /* Small Sliders */
-    .row { margin:30px 0; }
-    .row-title { font-size:18px; margin:0 0 12px; text-transform:uppercase; color:#ddd; }
-    .small-slider { display:flex; overflow-x:auto; gap:12px; padding-bottom:8px; }
-    .small-slider::-webkit-scrollbar { height:6px; }
-    .small-slider::-webkit-scrollbar-thumb { background:#555; border-radius:3px; }
-    .small-card { position:relative; flex:0 0 180px; aspect-ratio:16/9; border-radius:8px; overflow:hidden; cursor:pointer; }
-    .small-card img { width:100%; height:100%; object-fit:cover; }
-    .small-card .title { position:absolute; bottom:0; width:100%; padding:6px; background:rgba(0,0,0,0.5); font-size:14px; text-align:center; }
+    .row { margin-bottom:30px; }
+    .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
+    .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
+    .small-card{display:inline-block; width:180px; margin-right:12px; cursor:pointer; border-radius:8px; overflow:hidden;}
+    .small-card img{width:100%; height:auto; display:block;}
+    .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd;}
     /* Detail View */
-    #detail-view { display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px; }
-    #back-to-gallery { background:none; border:none; color:#e50914; font-size:16px; cursor:pointer; }
-    #detail-thumb { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:8px; margin:20px 0; }
-    #detail-title { margin:0; font-size:22px; }
-    .actions { margin-top:20px; text-align:center; }
-    .btn { background-color:#e50914; color:#fff; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-size:16px; }
-    #open-link { display:none; margin-top:10px; color:#1a73e8; cursor:pointer; text-decoration:underline; }
+    #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
+    #back-to-gallery{background:none;border:none;color:#e50914;font-size:16px;cursor:pointer;margin-bottom:20px;}
+    #detail-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;}
+    .actions{margin-top:20px;text-align:center;}
+    .btn{background-color:#e50914;color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
+    #open-link{display:none;margin-top:10px;color:#1a73e8;cursor:pointer;text-decoration:underline;}
   </style>
 </head>
 <body>
-  <div class="header">
-    <button id="open-search" class="search-btn">🔍</button>
-  </div>
-
-  <!-- Search Panel -->
-  <div id="search-panel">
-    <header>
-      <h3>Search</h3>
-      <button id="close-search">✖</button>
-    </header>
-    <input id="search-input" type="text" placeholder="Search titles..." />
-    <div id="search-results"></div>
-  </div>
-
-  <!-- Main Slider -->
+  <h2 class="row-title">Featured</h2>
   <div class="main-slider" id="main-slider">
     <div class="track" id="main-track">
       {% for v in videos %}
@@ -117,40 +91,7 @@
 
   <script>
     const BOT_USERNAME = '{{ bot_username }}';
-    // Search panel toggles
-    const panel = document.getElementById('search-panel');
-    document.getElementById('open-search').onclick = () => panel.classList.add('open');
-    document.getElementById('close-search').onclick = () => panel.classList.remove('open');
-
-    // Populate search-results initially
-    const allCards = Array.from(document.querySelectorAll('.small-card, .card')).map(c => {
-      return {
-        thumb: c.dataset.thumb,
-        title: c.dataset.title,
-        key: c.dataset.key
-      };
-    });
-    const resultsContainer = document.getElementById('search-results');
-    function renderResults(list) {
-      resultsContainer.innerHTML = '';
-      list.forEach(v => {
-        const div = document.createElement('div');
-        div.className = 'small-card';
-        div.dataset.thumb = v.thumb;
-        div.dataset-title = v.title;
-        div.dataset-key = v.key;
-        div.innerHTML = `<img src="${v.thumb}" alt="${v.title}"><div class="title">${v.title}</div>`;
-        resultsContainer.append(div);
-      });
-    }
-    renderResults(allCards);
-    // Filter on input
-    document.getElementById('search-input').addEventListener('input', e => {
-      const term = e.target.value.toLowerCase();
-      renderResults(allCards.filter(v => v.title.toLowerCase().includes(term)));
-    });
-
-    // Main slider auto
+    // Main slider
     let idx = 0;
     const mTrack = document.getElementById('main-track');
     const mCards = mTrack.children;
@@ -158,46 +99,59 @@
       idx = (i + mCards.length) % mCards.length;
       mTrack.style.transform = `translateX(-${idx * 100}%)`;
     }
-    let mainInterval = setInterval(() => showMain(idx + 1), 5000);
-    document.getElementById('main-slider').addEventListener('mouseenter', () => clearInterval(mainInterval));
-    document.getElementById('main-slider').addEventListener('mouseleave', () => mainInterval = setInterval(() => showMain(idx + 1), 5000));
+    setInterval(() => showMain(idx + 1), 5000);
 
-    // Detail view handling
-    const detailView = document.getElementById('detail-view');
-    const backBtn = document.getElementById('back-to-gallery');
-    const dThumb = document.getElementById('detail-thumb');
-    const dTitle = document.getElementById('detail-title');
-    const dGet = document.getElementById('detail-get');
-    const dLink = document.getElementById('open-link');
+    // Shuffle Trending on client
+    function shuffleSlider(id) {
+      const slider = document.getElementById(id);
+      const cards = Array.from(slider.children);
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        slider.append(cards[j]);
+        cards.splice(j, 1);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => shuffleSlider('trend-slider'));
+
+    // Card click (both main and small)
     document.body.addEventListener('click', e => {
       const card = e.target.closest('.card, .small-card'); if (!card) return;
-      const {thumb, title, key} = card.dataset;
-      dThumb.src = thumb; dThumb.alt = title;
-      dTitle.textContent = title;
-      dGet.style.display = 'inline-block'; dGet.disabled = false;
-      dLink.style.display = 'none';
-      dGet.textContent = 'Get File';
-      dGet.onclick = () => startTimer(key);
-      document.querySelectorAll('.main-slider, .row, .header').forEach(el => el.style.display = 'none');
-      detailView.style.display = 'block';
-      panel.classList.remove('open');
+      const thumb = card.getAttribute('data-thumb');
+      const title = card.getAttribute('data-title');
+      const key = card.getAttribute('data-key');
+      // populate detail
+      document.getElementById('detail-thumb').src = thumb;
+      document.getElementById('detail-thumb').alt = title;
+      document.getElementById('detail-title').textContent = title;
+      document.getElementById('detail-get').style.display = 'inline-block';
+      document.getElementById('open-link').style.display = 'none';
+      document.getElementById('detail-get').disabled = false;
+      document.getElementById('detail-get').onclick = () => startTimer(key);
+      // toggle views
+      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'none');
+      document.getElementById('detail-view').style.display = 'block';
     });
-    backBtn.onclick = () => {
-      detailView.style.display = 'none';
-      document.querySelectorAll('.main-slider, .row, .header').forEach(el => el.style.display = 'block');
+    // Back
+    document.getElementById('back-to-gallery').onclick = () => {
+      document.getElementById('detail-view').style.display = 'none';
+      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'block');
     };
+    // Timer -> show link
     function startTimer(key) {
-      dGet.disabled = true;
-      let c = 10; dGet.textContent = `Wait ${c}s...`;
+      const btn = document.getElementById('detail-get');
+      const link = document.getElementById('open-link');
+      btn.disabled = true;
+      let c = 10;
+      btn.textContent = `Wait ${c}s...`;
       const iv = setInterval(() => {
         c--;
         if (c <= 0) {
           clearInterval(iv);
-          dGet.style.display = 'none';
-          dLink.style.display = 'block';
-          dLink.onclick = () => window.open(`https://t.me/${BOT_USERNAME}?start=${key}`,'_blank');
+          btn.style.display = 'none';
+          link.style.display = 'block';
+          link.onclick = () => window.open(`https://t.me/${BOT_USERNAME}?start=${key}`, '_blank');
         } else {
-          dGet.textContent = `Wait ${c}s...`;
+          btn.textContent = `Wait ${c}s...`;
         }
       }, 1000);
     }
