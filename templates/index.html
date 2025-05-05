@@ -1,209 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Media Gallery</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimpleStream</title>
   <style>
-    /* Base Styles */
-    body {
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f0f2f5;
-      overflow-x: hidden;
+    /* Global Variables */
+    :root {
+      --bg: #000;
+      --fg: #fff;
+      --radius: 8px;
+      --gap: 12px;
+      --transition: 0.3s;
     }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--fg); font-family: sans-serif; }
+    a { color: inherit; text-decoration: none; }
+
     /* Header */
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px;
-      background: #fff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 24px;
-      color: #333;
-    }
-    .search-button {
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      color: #555;
-    }
-    /* Slide-out Search Panel */
-    #search-panel {
-      position: fixed;
-      top: 0;
-      right: -100%;
-      width: 300px;
-      height: 100vh;
-      background: #fff;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-      transition: right 0.3s ease;
-      padding: 20px;
-      z-index: 9;
-      display: flex;
-      flex-direction: column;
-    }
-    #search-panel.open {
-      right: 0;
-    }
-    #search-panel input {
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      width: 100%;
-      margin-bottom: 20px;
-    }
-    #close-panel {
-      align-self: flex-end;
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    /* Grid */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 20px;
-      padding: 20px;
-    }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.2s;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.1);
-    }
-    .thumb-container {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16/9;
-      overflow: hidden;
-    }
-    .thumb-container img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .title {
-      font-weight: bold;
-      font-size: 16px;
-      color: #222;
-      margin: 12px 16px 8px;
-      flex: 0 0 auto;
-      text-align: center;
-    }
-    .actions {
-      margin-top: auto;
+      display: flex; align-items: center; justify-content: space-between;
       padding: 16px;
-      display: flex;
-      justify-content: center;
-      gap: 10px;
+      background: var(--bg);
+      position: sticky; top: 0; z-index: 100;
     }
-    .btn, .open-btn {
-      background-color: #1a73e8;
-      color: white;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background 0.2s;
+    .logo { font-size: 1.5rem; font-weight: bold; }
+    .search-bar {
+      flex: 1; max-width: 400px;
+      margin: 0 16px;
     }
-    .btn:hover, .open-btn:hover {
-      background-color: #1669c1;
+    .search-bar input {
+      width: 100%; padding: 8px 12px;
+      background: var(--bg); border: 1px solid var(--fg);
+      color: var(--fg); border-radius: var(--radius);
+      font-size: 1rem;
     }
-    .hidden { display: none; }
-    .timer {
-      font-size: 14px;
-      color: #555;
-      margin-top: 8px;
-      text-align: center;
+
+    /* Scrollers */
+    .scroller {
+      overflow-x: auto; scroll-snap-type: x mandatory;
+      display: flex; gap: var(--gap); padding: 16px 0;
+    }
+    .scroller::-webkit-scrollbar { display: none; }
+    .slide,
+    .big-slide,
+    .grid-item { flex: 0 0 auto; scroll-snap-align: start; border-radius: var(--radius); overflow: hidden; }
+    /* 1. Auto scroller 16:9 */
+    .slide { width: 80vw; aspect-ratio: 16/9; background: #333; }
+    /* 2. Big slide row: 1/3 height of above */
+    .big-slide { width: 50vw; aspect-ratio: 16/9; background: #444; }
+    /* 3. Grid rows: two in line each row */
+    .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap); padding-bottom: 16px; }
+    .grid-item { width: 100%; aspect-ratio: 16/9; background: #555; }
+
+    /* Thumbnail Images */
+    .slide img,
+    .big-slide img,
+    .grid-item img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+
+    /* Detail Page Overlay */
+    #detail-page {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; padding: 24px; z-index: 200;
+    }
+    #detail-page.open { display: flex; }
+    #detail-content {
+      background: var(--bg); padding: 24px; border-radius: var(--radius);
+      max-width: 90%; width: 400px; text-align: center;
+    }
+    #detail-content img { width: 100%; border-radius: var(--radius); margin-bottom: 16px; }
+    .btn { margin-top: 12px; padding: 8px 16px; border: 1px solid var(--fg);
+      background: transparent; color: var(--fg); border-radius: var(--radius);
+      cursor: pointer; transition: background var(--transition); }
+    .btn:hover { background: var(--fg); color: var(--bg); }
+    #timer { margin-top: 8px; }
+
+    /* Search Overlay */
+    #search-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+      display: none; flex-direction: column; padding: 24px; z-index: 150;
+    }
+    #search-overlay.open { display: flex; }
+    #search-overlay input { padding: 8px; margin-bottom: 16px;
+      border: 1px solid var(--fg); border-radius: var(--radius);
+      background: var(--bg); color: var(--fg); }
+    #search-results { flex: 1; overflow-y: auto; display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--gap); }
+    #search-results .grid-item { aspect-ratio: 16/9; }
+
+    /* Responsive Adjustments */
+    @media(min-width:600px){
+      .slide { width: 60vw; }
+      .big-slide { width: 30vw; }
+      .grid-container { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Media Gallery</h1>
-    <button id="open-panel" class="search-button">🔍</button>
+    <div class="logo">SimpleStream</div>
+    <div class="search-bar">
+      <input type="text" id="header-search" placeholder="Search...">
+    </div>
   </header>
 
-  <!-- Slide-out Search Panel -->
-  <div id="search-panel">
-    <button id="close-panel">✖</button>
-    <input id="search-input" type="text" placeholder="Search by title..." />
+  <!-- 1: Auto scroller 16:9 -->
+  <div class="scroller" id="primary-scroller">
+    <!-- repeat slides -->
+    <div class="slide"><img src="..." alt=""></div>
+    <div class="slide"><img src="..." alt=""></div>
+    <!-- ... -->
   </div>
 
-  <div class="grid" id="gallery">
-    {% for v in videos %}
-    <div class="card" data-title="{{ v.title | lower }}">
-      <div class="thumb-container">
-        {% if v.thumbnail_url %}
-        <img src="{{ v.thumbnail_url }}" alt="Thumbnail">
-      {% else %}
-        <img src="/static/file-icon.png" alt="File Icon">
-      {% endif %}
-      </div>
-      <div class="title">{{ v.title }}</div>
-      <div class="actions"><button class="btn" onclick="startTimer(this, '{{ bot_username }}', '{{ v.custom_key }}')">Get</button>
-        <button class="open-btn hidden" onclick="window.open('https://t.me/{{ bot_username }}?start={{ v.custom_key }}','_blank')">Open</button>
-      </div>
-      <div class="timer hidden">Please wait...</div>
+  <!-- 2: Big slide scroller -->
+  <div class="scroller" id="big-scroller">
+    <div class="big-slide"><img src="..." alt=""></div>
+    <div class="big-slide"><img src="..." alt=""></div>
+  </div>
+
+  <!-- 3 & 4: Grid rows endless -->
+  <div class="grid-container" id="grid-row">
+    <div class="grid-item"><img src="..." alt=""></div>
+    <div class="grid-item"><img src="..." alt=""></div>
+    <div class="grid-item"><img src="..." alt=""></div>
+    <div class="grid-item"><img src="..." alt=""></div>
+    <!-- more items -->
+  </div>
+
+  <!-- Detail Page -->
+  <div id="detail-page">
+    <div id="detail-content">
+      <img id="detail-thumb" src="" alt="">
+      <h2 id="detail-title"></h2>
+      <button class="btn" id="get-file">Get File</button>
+      <div id="timer"></div>
+      <button class="btn" id="open-link" style="display:none;">Open File</button>
+      <button class="btn" id="close-detail">Close</button>
     </div>
-    {% endfor %}
+  </div>
+
+  <!-- Search Overlay -->
+  <div id="search-overlay">
+    <input type="text" id="overlay-search" placeholder="Search...">
+    <div id="search-results"></div>
+    <button class="btn" id="close-search">Close</button>
   </div>
 
   <script>
-    // Panel toggles
-    const panel = document.getElementById('search-panel');
-    document.getElementById('open-panel').onclick = () => panel.classList.add('open');
-    document.getElementById('close-panel').onclick = () => panel.classList.remove('open');
-
-    // Search filtering
-    document.getElementById('search-input').addEventListener('input', function() {
-      const term = this.value.toLowerCase();
-      document.querySelectorAll('#gallery .card').forEach(card => {
-        card.style.display = card.getAttribute('data-title').includes(term) ? '' : 'none';
-      });
+    // Shared Data
+    const items = document.querySelectorAll('.slide img, .big-slide img, .grid-item img');
+    items.forEach(img => {
+      img.addEventListener('click', () => openDetail(img.src));
     });
+    function openDetail(src) {
+      document.getElementById('detail-thumb').src = src;
+      document.getElementById('detail-title').textContent = 'Title';
+      document.getElementById('detail-page').classList.add('open');
+      startTimer();
+    }
+    document.getElementById('close-detail').onclick = () => document.getElementById('detail-page').classList.remove('open');
 
     // Timer logic
-    function startTimer(btn, username, key) {
-      btn.disabled = true;
-      const card = btn.closest('.card');
-      const timerDiv = card.querySelector('.timer');
-      const openBtn = card.querySelector('.open-btn');
-      let countdown = 10;
-      timerDiv.textContent = Please wait ${countdown} seconds...;
-      timerDiv.classList.remove('hidden');
-      const interval = setInterval(() => {
-        countdown--;
-        if (countdown <= 0) {
-          clearInterval(interval);
-          timerDiv.classList.add('hidden');
-          openBtn.classList.remove('hidden');
+    function startTimer() {
+      const timerEl = document.getElementById('timer');
+      let count = 5;
+      timerEl.textContent = `Wait ${count}s...`;
+      const iv = setInterval(() => {
+        count--;
+        if (count <= 0) {
+          clearInterval(iv);
+          timerEl.textContent = '';
+          document.getElementById('open-link').style.display = 'block';
         } else {
-          timerDiv.textContent = Please wait ${countdown} seconds...;
+          timerEl.textContent = `Wait ${count}s...`;
         }
       }, 1000);
     }
+
+    // Search Overlay
+    document.getElementById('header-search').addEventListener('focus', () => document.getElementById('search-overlay').classList.add('open'));
+    document.getElementById('close-search').onclick = () => document.getElementById('search-overlay').classList.remove('open');
+    document.getElementById('overlay-search').oninput = e => {
+      const term = e.target.value.toLowerCase();
+      const results = document.getElementById('search-results');
+      results.innerHTML = '';
+      // Simulated search - replicate grid-item
+      items.forEach(img => {
+        if (img.alt.toLowerCase().includes(term) || !term) {
+          const div = document.createElement('div');
+          div.className = 'grid-item';
+          div.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
+          div.addEventListener('click', () => openDetail(img.src));
+          results.appendChild(div);
+        }
+      });
+    };
   </script>
 </body>
 </html>
