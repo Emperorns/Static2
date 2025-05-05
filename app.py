@@ -175,7 +175,7 @@ async def start_command(update: Update, context):
     if not args:
         tutorial_btn = InlineKeyboardButton(text="Movies", url=H_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
-        await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.", reply_markup=markup)
+        await update.message.reply_text("👋 Welcome! click on below button or paste this link on your browser to get 18+🔞 videos,LINK - https://stormy-briana-mrblackgod-f86ebf97.koyeb.app/", reply_markup=markup)
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
