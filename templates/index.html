@@ -6,39 +6,65 @@
   <title>Media Gallery</title>
   <style>
     /* Base */
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin:0; padding:20px; background:#141414; color:#fff; }
-    h2.row-title { font-size:18px; margin:20px 0 10px; text-transform:uppercase; letter-spacing:1px; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #141414; color: #fff; }
+    h2.row-title { font-size: 18px; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Header */
+    header { display: flex; justify-content: space-between; align-items: center; padding: 10px; }
+    .logo { flex: 1; text-align: left; margin: 0; font-size: 24px; color: #e50914; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #search-btn { background: #e50914; color: #fff; border: none; padding: 8px; border-radius: 50%; cursor: pointer; font-size: 18px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+
     /* Main Slider */
-    .main-slider{position:relative; width:100%; overflow:hidden; border-radius:12px;}
-    .main-slider .track{display:flex; transition:transform .5s ease;}
-    .main-slider .card{flex:0 0 100%; display:flex; flex-direction:column;}
-    .main-slider .image-container{aspect-ratio:16/9; position:relative;}
-    .main-slider img{width:100%;height:100%;object-fit:cover;}
-    .main-slider .title{background:rgba(0,0,0,0.7); padding:12px 20px; text-align:center; font-size:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .nav-arrow{position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5); color:#fff; border:none; padding:10px; cursor:pointer; font-size:18px;}
-    .left-arrow{left:10px;} .right-arrow{right:10px;}
+    .main-slider { position: relative; width: 100%; overflow: hidden; border-radius: 12px; }
+    .main-slider .track { display: flex; transition: transform .5s ease; }
+    .main-slider .card { flex: 0 0 100%; display: flex; flex-direction: column; }
+    .main-slider .image-container { aspect-ratio: 16/9; position: relative; }
+    .main-slider img { width: 100%; height: 100%; object-fit: cover; }
+    .main-slider .title { background: rgba(0,0,0,0.7); padding: 12px 20px; text-align: center; font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.5); color: #fff; border: none; padding: 10px; cursor: pointer; font-size: 18px; }
+    .left-arrow { left: 10px; } .right-arrow { right: 10px; }
+
     /* Small Sliders */
-    .row { margin-bottom:30px; }
-    .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
-    .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
-    .small-card{display:inline-flex; flex-direction:column; min-width:240px; max-width:30%; margin-right:16px; cursor:pointer;}
-    .small-card .image-container{aspect-ratio:16/9; position:relative;}
-    .small-card img{width:100%; height:100%; object-fit:cover;}
-    .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .row { margin-bottom: 30px; }
+    .small-slider { overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+    .small-slider::-webkit-scrollbar { height: 6px; } .small-slider::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+    .small-card { display: inline-flex; flex-direction: column; min-width: 240px; max-width: 30%; margin-right: 16px; cursor: pointer; }
+    .small-card .image-container { aspect-ratio: 16/9; position: relative; }
+    .small-card img { width: 100%; height: 100%; object-fit: cover; }
+    .small-card .title { font-size: 14px; margin: 6px 0; text-align: center; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
     /* Detail View */
-    #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
-    #back-to-gallery{background:#e50914; border:none; color:#fff; font-size:16px; cursor:pointer; padding:8px 16px; border-radius:8px; margin-bottom:20px;}
-    #detail-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;}
-    .actions{margin-top:20px;text-align:center;}
-    .btn{background-color:#e50914;color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
-    #open-link{display:none;margin-top:10px;color:#1a73e8;cursor:pointer;text-decoration:underline;}
+    #detail-view { display: none; padding: 20px; max-width: 600px; margin: 40px auto; background: #1f1f1f; border-radius: 12px; }
+    #back-to-gallery { background: #e50914; border: none; color: #fff; font-size: 16px; cursor: pointer; padding: 8px 16px; border-radius: 8px; margin-bottom: 20px; }
+    #detail-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; }
+    .actions { margin-top: 20px; text-align: center; }
+    .btn { background-color: #e50914; color: #fff; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    #open-link { display: none; margin-top: 10px; color: #1a73e8; cursor: pointer; text-decoration: underline; }
+
+    /* Search Slide */
+    #search-slide { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+    #search-slide > div { max-width: 800px; margin: 0 auto; background: #1f1f1f; padding: 20px; border-radius: 12px; }
+    #close-search { position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+    #search-input { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none; background: #333; color: #fff; }
+    #search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; padding: 10px; }
+    #search-results .small-card { min-width: auto; max-width: none; width: 100%; }
+
+    /* Media Queries for Mobile */
+    @media (max-width: 600px) {
+      .logo { font-size: 18px; }
+      #search-btn { width: 30px; height: 30px; font-size: 16px; }
+      .small-card { min-width: 160px; }
+      #search-slide { padding: 10px; }
+      #search-input { font-size: 14px; }
+      #search-results { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      #close-search { font-size: 30px; }
+    }
   </style>
 </head>
 <body>
-  <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-    <div style="flex: 1;"></div>
-    <h1 style="flex: 1; text-align: center; margin: 0; font-size: 24px; color: #e50914;">Prime Video</h1>
-    <button id="search-btn" style="flex: 1; background: #e50914; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; text-align: right;">Search</button>
+  <header>
+    <h1 class="logo">Prime Video</h1>
+    <button id="search-btn">🔍</button>
   </header>
 
   <h2 class="row-title">Featured</h2>
@@ -110,12 +136,12 @@
   </div>
 
   <!-- Search Slide -->
-  <div id="search-slide" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box;">
-    <div style="max-width: 800px; margin: 0 auto; background: #1f1f1f; padding: 20px; border-radius: 12px;">
-      <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">×</button>
-      <h2 style="text-align: center; margin-bottom: 20px;">Search Videos</h2>
-      <input type="text" id="search-input" placeholder="Search by title..." style="width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none; background: #333; color: #fff;">
-      <div id="search-results" class="small-slider" style="white-space: normal; display: flex; flex-wrap: wrap; justify-content: center;"></div>
+  <div id="search-slide">
+    <div>
+      <button id="close-search">×</button>
+      <h2>Search Videos</h2>
+      <input type="text" id="search-input" placeholder="Search by title...">
+      <div id="search-results"></div>
     </div>
   </div>
 
