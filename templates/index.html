@@ -83,11 +83,11 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        /* Endless Files Section */
-        .endless-files {
+        /* More Files Section */
+        .more-files {
             margin: 15px 12px;
         }
-        .endless-files h2 { font-size: 1rem; margin-bottom: 10px; }
+        .more-files h2 { font-size: 1rem; margin-bottom: 10px; }
         .vertical-scroll {
             display: flex; flex-direction: column; gap: var(--gap);
             max-height: 100vh; overflow-y: auto; padding-bottom: 20px;
@@ -95,6 +95,7 @@
         .vertical-scroll .thumbnail {
             min-width: unset; width: 90vw; margin: 0 auto;
         }
+        .vertical-scroll .image-container { aspect-ratio: 16/9; }
         .vertical-scroll::-webkit-scrollbar { width: 4px; }
         .vertical-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 
@@ -109,7 +110,7 @@
             background: var(--bg); padding: 20px; border-radius: var(--radius);
             max-width: 90%; width: 350px; text-align: center;
         }
-        #detail-content img { width: 100%; aspect-ratio: 9/16; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
+        #detail-content img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
         .btn {
             margin-top: 10px; padding: 6px 12px; border: none;
             background: var(--accent); color: var(--fg); border-radius: var(--radius);
@@ -135,14 +136,7 @@
             gap: var(--gap);
         }
         #search-results .thumbnail { width: 100%; }
-
-        /* Footer */
-        footer {
-            text-align: center; padding: 15px 12px; font-size: 0.7rem;
-            border-top: 1px solid #333;
-        }
-        footer ul { list-style: none; display: flex; justify-content: center; gap: 12px; margin-bottom: 6px; }
-        footer ul li a:hover { color: var(--accent); }
+        #search-results .image-container { aspect-ratio: 16/9; }
     </style>
 </head>
 <body>
@@ -198,9 +192,9 @@
         </div>
     </section>
 
-    <section class="endless-files">
-        <h2>Endless Files</h2>
-        <div class="vertical-scroll" id="endless-files-slider">
+    <section class="more-files">
+        <h2>More Files</h2>
+        <div class="vertical-scroll" id="more-files-slider">
             {% for v in videos %}
             <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
                 <div class="image-container">
@@ -228,15 +222,6 @@
         <div id="search-results"></div>
         <button class="btn secondary" id="close-search">Close</button>
     </div>
-
-    <footer>
-        <ul>
-            <li><a href="#">About</a></li>
-            <li><a href="#">Help</a></li>
-            <li><a href="#">Terms of Use</a></li>
-        </ul>
-        <p>© 2025 Prime Video</p>
-    </footer>
 
     <script>
         const BOT_USERNAME = '{{ bot_username }}';
