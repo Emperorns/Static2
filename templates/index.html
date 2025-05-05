@@ -11,18 +11,20 @@
     /* Main Slider */
     .main-slider{position:relative; width:100%; overflow:hidden; border-radius:12px;}
     .main-slider .track{display:flex; transition:transform .5s ease;}
-    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden;}
+    .main-slider .card{flex:0 0 100%; display:flex; flex-direction:column;}
+    .main-slider .image-container{aspect-ratio:16/9; position:relative;}
     .main-slider img{width:100%;height:100%;object-fit:cover;}
-    .main-slider .title{position:absolute; bottom:0; left:0; right:0; font-size:24px; background:rgba(0,0,0,0.7); padding:12px 20px; text-align:center;}
+    .main-slider .title{background:rgba(0,0,0,0.7); padding:12px 20px; text-align:center; font-size:24px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .nav-arrow{position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5); color:#fff; border:none; padding:10px; cursor:pointer; font-size:18px;}
     .left-arrow{left:10px;} .right-arrow{right:10px;}
     /* Small Sliders */
     .row { margin-bottom:30px; }
     .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
     .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
-    .small-card{display:inline-block; min-width:240px; max-width:30%; margin-right:16px; cursor:pointer; border-radius:8px; overflow:hidden; aspect-ratio:16/9;}
-    .small-card img{width:100%; height:100%; object-fit:cover; display:block;}
-    .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd;}
+    .small-card{display:inline-flex; flex-direction:column; min-width:240px; max-width:30%; margin-right:16px; cursor:pointer;}
+    .small-card .image-container{aspect-ratio:16/9; position:relative;}
+    .small-card img{width:100%; height:100%; object-fit:cover;}
+    .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     /* Detail View */
     #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
     #back-to-gallery{background:#e50914; border:none; color:#fff; font-size:16px; cursor:pointer; padding:8px 16px; border-radius:8px; margin-bottom:20px;}
@@ -33,8 +35,10 @@
   </style>
 </head>
 <body>
-  <header style="text-align: right; padding: 10px;">
-    <button id="search-btn" style="background: #e50914; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">Search</button>
+  <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+    <div style="flex: 1;"></div>
+    <h1 style="flex: 1; text-align: center; margin: 0; font-size: 24px; color: #e50914;">Prime Video</h1>
+    <button id="search-btn" style="flex: 1; background: #e50914; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; text-align: right;">Search</button>
   </header>
 
   <h2 class="row-title">Featured</h2>
@@ -42,7 +46,9 @@
     <div class="track" id="main-track">
       {% for v in videos %}
       <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="image-container">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        </div>
         <div class="title">{{ v.title }}</div>
       </div>
       {% endfor %}
@@ -57,7 +63,9 @@
     <div class="small-slider" id="rec-slider">
       {% for v in videos %}
       <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="image-container">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        </div>
         <div class="title">{{ v.title }}</div>
       </div>
       {% endfor %}
@@ -68,7 +76,9 @@
     <div class="small-slider" id="new-slider">
       {% for v in videos %}
       <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="image-container">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        </div>
         <div class="title">{{ v.title }}</div>
       </div>
       {% endfor %}
@@ -79,7 +89,9 @@
     <div class="small-slider" id="trend-slider">
       {% for v in videos %}
       <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        <div class="image-container">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+        </div>
         <div class="title">{{ v.title }}</div>
       </div>
       {% endfor %}
@@ -98,11 +110,13 @@
   </div>
 
   <!-- Search Slide -->
-  <div id="search-slide" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box;">
-    <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
-    <h2 style="text-align: center; margin-bottom: 20px;">Search Videos</h2>
-    <input type="text" id="search-input" placeholder="Search by title..." style="width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none;">
-    <div id="search-results" class="small-slider"></div>
+  <div id="search-slide" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box;">
+    <div style="max-width: 800px; margin: 0 auto; background: #1f1f1f; padding: 20px; border-radius: 12px;">
+      <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">×</button>
+      <h2 style="text-align: center; margin-bottom: 20px;">Search Videos</h2>
+      <input type="text" id="search-input" placeholder="Search by title..." style="width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none; background: #333; color: #fff;">
+      <div id="search-results" class="small-slider" style="white-space: normal; display: flex; flex-wrap: wrap; justify-content: center;"></div>
+    </div>
   </div>
 
   <script>
@@ -200,7 +214,9 @@
         card.setAttribute('data-title', v.title);
         card.setAttribute('data-key', v.key);
         card.innerHTML = `
-          <img src="${v.thumb}" alt="${v.title}">
+          <div class="image-container">
+            <img src="${v.thumb}" alt="${v.title}">
+          </div>
           <div class="title">${v.title}</div>
         `;
         resultsContainer.appendChild(card);
