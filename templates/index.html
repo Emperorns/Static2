@@ -5,59 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Media Gallery</title>
   <style>
-    /* Base */
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #141414; color: #fff; }
-    h2.row-title { font-size: 18px; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
+    /* Base Styles */
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 15px; background: #141414; color: #fff; }
+    h2.row-title { font-size: 16px; margin: 15px 0 8px; text-transform: uppercase; letter-spacing: 1px; }
 
     /* Header */
-    header { display: flex; justify-content: space-between; align-items: center; padding: 10px; }
-    .logo { flex: 1; text-align: left; margin: 0; font-size: 24px; color: #e50914; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #search-btn { background: #e50914; color: #fff; border: none; padding: 8px; border-radius: 50%; cursor: pointer; font-size: 18px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 8px; }
+    .logo { flex: 1; text-align: left; margin: 0; font-size: 20px; color: #e50914; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #search-btn { background: #e50914; color: #fff; border: none; padding: 6px; border-radius: 50%; cursor: pointer; font-size: 16px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
 
     /* Main Slider */
-    .main-slider { position: relative; width: 100%; overflow: hidden; border-radius: 12px; }
+    .main-slider { position: relative; width: 100%; overflow: hidden; border-radius: 8px; }
     .main-slider .track { display: flex; transition: transform .5s ease; }
     .main-slider .card { flex: 0 0 100%; display: flex; flex-direction: column; }
     .main-slider .image-container { aspect-ratio: 16/9; position: relative; }
     .main-slider img { width: 100%; height: 100%; object-fit: cover; }
-    .main-slider .title { background: rgba(0,0,0,0.7); padding: 12px 20px; text-align: center; font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.5); color: #fff; border: none; padding: 10px; cursor: pointer; font-size: 18px; }
-    .left-arrow { left: 10px; } .right-arrow { right: 10px; }
+    .main-slider .title { padding: 8px; text-align: center; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.5); color: #fff; border: none; padding: 8px; cursor: pointer; font-size: 16px; }
+    .left-arrow { left: 8px; } .right-arrow { right: 8px; }
 
     /* Small Sliders */
-    .row { margin-bottom: 30px; }
+    .row { margin-bottom: 20px; }
     .small-slider { overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
-    .small-slider::-webkit-scrollbar { height: 6px; } .small-slider::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
-    .small-card { display: inline-flex; flex-direction: column; min-width: 240px; max-width: 30%; margin-right: 16px; cursor: pointer; }
+    .small-slider::-webkit-scrollbar { height: 4px; } .small-slider::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+    .small-card { display: inline-flex; flex-direction: column; min-width: 45vw; margin-right: 12px; cursor: pointer; }
     .small-card .image-container { aspect-ratio: 16/9; position: relative; }
     .small-card img { width: 100%; height: 100%; object-fit: cover; }
-    .small-card .title { font-size: 14px; margin: 6px 0; text-align: center; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .small-card .title { font-size: 12px; margin: 4px 0; text-align: center; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* Detail View */
-    #detail-view { display: none; padding: 20px; max-width: 600px; margin: 40px auto; background: #1f1f1f; border-radius: 12px; }
-    #back-to-gallery { background: #e50914; border: none; color: #fff; font-size: 16px; cursor: pointer; padding: 8px 16px; border-radius: 8px; margin-bottom: 20px; }
-    #detail-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; }
-    .actions { margin-top: 20px; text-align: center; }
-    .btn { background-color: #e50914; color: #fff; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
-    #open-link { display: none; margin-top: 10px; color: #1a73e8; cursor: pointer; text-decoration: underline; }
+    #detail-view { display: none; padding: 15px; max-width: 90%; margin: 20px auto; background: #1f1f1f; border-radius: 8px; }
+    #back-to-gallery { background: #e50914; border: none; color: #fff; font-size: 14px; cursor: pointer; padding: 6px 12px; border-radius: 6px; margin-bottom: 15px; }
+    #detail-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; }
+    .actions { margin-top: 15px; text-align: center; }
+    .btn { background-color: #e50914; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    #open-link { display: none; margin-top: 8px; color: #1a73e8; cursor: pointer; text-decoration: underline; }
 
     /* Search Slide */
-    #search-slide { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box; }
-    #search-slide > div { max-width: 800px; margin: 0 auto; background: #1f1f1f; padding: 20px; border-radius: 12px; }
-    #close-search { position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-    #search-input { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none; background: #333; color: #fff; }
-    #search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; padding: 10px; }
-    #search-results .small-card { min-width: auto; max-width: none; width: 100%; }
+    #search-slide { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto; padding: 15px; box-sizing: border-box; }
+    #search-slide > div { width: 100%; max-width: 600px; margin: 0 auto; background: #1f1f1f; padding: 15px; border-radius: 8px; }
+    #close-search { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+    #search-input { width: 100%; padding: 8px; font-size: 14px; margin-bottom: 15px; border-radius: 6px; border: none; background: #333; color: #fff; }
+    #search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 8px; }
+    #search-results .small-card { min-width: auto; width: 100%; }
 
-    /* Media Queries for Mobile */
-    @media (max-width: 600px) {
-      .logo { font-size: 18px; }
-      #search-btn { width: 30px; height: 30px; font-size: 16px; }
-      .small-card { min-width: 160px; }
-      #search-slide { padding: 10px; }
-      #search-input { font-size: 14px; }
-      #search-results { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-      #close-search { font-size: 30px; }
+    /* Media Queries for Larger Screens */
+    @media (min-width: 600px) {
+      .small-card { min-width: 200px; }
+      #search-slide > div { width: 90%; }
+      h2.row-title { font-size: 18px; }
+      .main-slider .title { font-size: 20px; }
+      .small-card .title { font-size: 14px; }
     }
   </style>
 </head>
@@ -126,7 +124,7 @@
 
   <!-- Detail View -->
   <div id="detail-view">
-    <button id="back-to-gallery">← Back to Gallery</button>
+    <button id="back-to-gallery">← Back</button>
     <img id="detail-thumb" alt="">
     <h2 id="detail-title"></h2>
     <div class="actions">
@@ -147,14 +145,13 @@
 
   <script>
     const BOT_USERNAME = '{{ bot_username }}';
-    // Collect video data
     const videos = Array.from(document.querySelectorAll('.card, .small-card')).map(card => ({
       thumb: card.getAttribute('data-thumb'),
       title: card.getAttribute('data-title'),
       key: card.getAttribute('data-key')
     }));
 
-    // Main slider
+    // Main Slider
     let idx = 0;
     const mTrack = document.getElementById('main-track');
     const mCards = mTrack.children;
@@ -166,7 +163,7 @@
     document.getElementById('left-arrow').onclick = () => showMain(idx - 1);
     document.getElementById('right-arrow').onclick = () => showMain(idx + 1);
 
-    // Shuffle Trending on client
+    // Shuffle Trending
     function shuffleSlider(id) {
       const slider = document.getElementById(id);
       const cards = Array.from(slider.children);
@@ -178,13 +175,12 @@
     }
     document.addEventListener('DOMContentLoaded', () => shuffleSlider('trend-slider'));
 
-    // Card click (both main and small)
+    // Card Click
     document.body.addEventListener('click', e => {
       const card = e.target.closest('.card, .small-card'); if (!card) return;
       const thumb = card.getAttribute('data-thumb');
       const title = card.getAttribute('data-title');
       const key = card.getAttribute('data-key');
-      // populate detail
       document.getElementById('detail-thumb').src = thumb;
       document.getElementById('detail-thumb').alt = title;
       document.getElementById('detail-title').textContent = title;
@@ -192,21 +188,22 @@
       document.getElementById('open-link').style.display = 'none';
       document.getElementById('detail-get').disabled = false;
       document.getElementById('detail-get').onclick = () => startTimer(key);
-      // toggle views
       document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'none');
       document.getElementById('detail-view').style.display = 'block';
     });
-    // Back
+
+    // Back to Gallery
     document.getElementById('back-to-gallery').onclick = () => {
       document.getElementById('detail-view').style.display = 'none';
       document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'block');
     };
-    // Timer -> show link
+
+    // Timer for Link
     function startTimer(key) {
       const btn = document.getElementById('detail-get');
       const link = document.getElementById('open-link');
       btn.disabled = true;
-      let c = 5; // Reduced from 10s to 5s
+      let c = 5;
       btn.textContent = `Wait ${c}s...`;
       const iv = setInterval(() => {
         c--;
@@ -221,7 +218,7 @@
       }, 1000);
     }
 
-    // Search functionality
+    // Search Functionality
     document.getElementById('search-btn').onclick = () => {
       document.getElementById('search-slide').style.display = 'block';
     };
