@@ -3,88 +3,336 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Media Gallery</title>
+  <title>PrimeClone Gallery</title>
   <style>
-    /* Base */
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin:0; padding:20px; background:#141414; color:#fff; }
-    h2.row-title { font-size:18px; margin:20px 0 10px; text-transform:uppercase; letter-spacing:1px; }
-    /* Main Slider */
-    .main-slider{position:relative; width:100%; overflow:hidden; border-radius:12px;}
-    .main-slider .track{display:flex; transition:transform .5s ease;}
-    .main-slider .card{flex:0 0 100%; aspect-ratio:16/9; position:relative; border-radius:12px; overflow:hidden;}
-    .main-slider img{width:100%;height:100%;object-fit:cover;}
-    .main-slider .title{position:absolute; bottom:0; left:0; right:0; font-size:24px; background:rgba(0,0,0,0.7); padding:12px 20px; text-align:center;}
-    .nav-arrow{position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.5); color:#fff; border:none; padding:10px; cursor:pointer; font-size:18px;}
-    .left-arrow{left:10px;} .right-arrow{right:10px;}
-    /* Small Sliders */
-    .row { margin-bottom:30px; }
-    .small-slider{overflow-x:auto; white-space:nowrap; scroll-behavior:smooth;}
-    .small-slider::-webkit-scrollbar{height:6px;} .small-slider::-webkit-scrollbar-thumb{background:#555; border-radius:3px;}
-    .small-card{display:inline-block; min-width:240px; max-width:30%; margin-right:16px; cursor:pointer; border-radius:8px; overflow:hidden; aspect-ratio:16/9;}
-    .small-card img{width:100%; height:100%; object-fit:cover; display:block;}
-    .small-card .title{font-size:14px; margin:6px 0; text-align:center; color:#ddd;}
+    /* Base and Variables */
+    :root {
+      --bg-primary: #0d131b;
+      --bg-secondary: #1a222b;
+      --accent: #00a8e1;
+      --text-primary: #e5e5e5;
+      --text-secondary: #b0b0b0;
+      --transition-speed: 0.3s;
+      --card-radius: 8px;
+      --shadow-level: rgba(0, 0, 0, 0.4);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Amazon Ember', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      padding: 12px 24px;
+      background: var(--bg-secondary);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px var(--shadow-level);
+    }
+    .logo {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--accent);
+      letter-spacing: 1px;
+      margin-right: 2rem;
+    }
+    nav ul {
+      display: flex;
+      list-style: none;
+    }
+    nav li {
+      margin-right: 1.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: color var(--transition-speed);
+    }
+    nav li:hover {
+      color: var(--text-primary);
+    }
+    #search-btn {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: color var(--transition-speed);
+    }
+    #search-btn:hover { color: var(--accent); }
+
+    /* Section Titles */
+    h2.row-title {
+      font-size: 1.1rem;
+      margin: 1.5rem 2rem 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+    }
+
+    /* Carousel Common */
+    .carousel {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+    }
+    .track {
+      display: flex;
+      transition: transform 0.6s ease;
+    }
+
+    /* Main Carousel */
+    .main-slider .card {
+      flex: 0 0 100%;
+      position: relative;
+    }
+    .main-slider img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: var(--card-radius);
+      filter: brightness(0.9);
+      transition: filter var(--transition-speed);
+    }
+    .main-slider img:hover {
+      filter: brightness(1);
+    }
+    .main-slider .title {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      font-size: 1.8rem;
+      background: linear-gradient(90deg, rgba(0,0,0,0.8), transparent);
+      padding: 12px 16px;
+      border-radius: var(--card-radius);
+      max-width: 60%;
+    }
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--bg-secondary);
+      color: var(--accent);
+      border: none;
+      padding: 0.8rem;
+      cursor: pointer;
+      font-size: 1.5rem;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px var(--shadow-level);
+      transition: background var(--transition-speed);
+    }
+    .nav-arrow:hover { background: var(--bg-primary); }
+    .left-arrow { left: 1rem; }
+    .right-arrow { right: 1rem; }
+
+    /* Small Carousel */
+    .row {
+      margin-bottom: 2rem;
+    }
+    .small-slider {
+      overflow-x: auto;
+      white-space: nowrap;
+      scroll-behavior: smooth;
+      padding-left: 2rem;
+    }
+    .small-slider::-webkit-scrollbar {
+      height: 6px;
+    }
+    .small-slider::-webkit-scrollbar-thumb {
+      background: var(--text-secondary);
+      border-radius: 3px;
+    }
+    .small-card {
+      display: inline-block;
+      width: 180px;
+      margin-right: 1rem;
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      background: var(--bg-secondary);
+      box-shadow: 0 2px 8px var(--shadow-level);
+      transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    }
+    .small-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px var(--shadow-level);
+    }
+    .small-card img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      display: block;
+    }
+    .small-card .title {
+      font-size: 0.9rem;
+      margin: 0.5rem;
+      color: var(--text-primary);
+    }
+
     /* Detail View */
-    #detail-view{display:none; padding:20px; max-width:600px; margin:40px auto; background:#1f1f1f; border-radius:12px;}
-    #back-to-gallery{background:#e50914; border:none; color:#fff; font-size:16px; cursor:pointer; padding:8px 16px; border-radius:8px; margin-bottom:20px;}
-    #detail-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;}
-    .actions{margin-top:20px;text-align:center;}
-    .btn{background-color:#e50914;color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;}
-    #open-link{display:none;margin-top:10px;color:#1a73e8;cursor:pointer;text-decoration:underline;}
+    #detail-view {
+      display: none;
+      padding: 2rem;
+      max-width: 900px;
+      margin: 3rem auto;
+      background: var(--bg-secondary);
+      border-radius: var(--card-radius);
+      box-shadow: 0 4px 12px var(--shadow-level);
+      animation: fadeIn var(--transition-speed);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #back-to-gallery {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--card-radius);
+      transition: background var(--transition-speed);
+      margin-bottom: 1.5rem;
+    }
+    #back-to-gallery:hover { background: #008cbf; }
+    #detail-thumb {
+      width: 100%;
+      border-radius: var(--card-radius);
+      object-fit: cover;
+      margin-bottom: 1rem;
+    }
+    #detail-title {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .btn {
+      background-color: var(--accent);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--card-radius);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background var(--transition-speed);
+    }
+    .btn:hover { background: #008cbf; }
+    #open-link {
+      display: none;
+      font-size: 1rem;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* Search Overlay */
+    #search-slide {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13,19,27, 0.95);
+      z-index: 200;
+      overflow-y: auto;
+      padding: 4rem 2rem;
+      animation: fadeIn var(--transition-speed);
+    }
+    #close-search {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      background: none;
+      border: none;
+      font-size: 2rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: color var(--transition-speed);
+    }
+    #close-search:hover { color: var(--accent); }
+    #search-slide h2 {
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 1.5rem;
+    }
+    #search-input {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: var(--card-radius);
+      border: none;
+      margin-bottom: 2rem;
+    }
+    #search-results .small-card { width: 200px; }
   </style>
 </head>
 <body>
-  <header style="text-align: right; padding: 10px;">
-    <button id="search-btn" style="background: #e50914; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">Search</button>
+  <header>
+    <div class="logo">PrimeClone</div>
+    <nav>
+      <ul>
+        <li>Home</li>
+        <li>TV Shows</li>
+        <li>Movies</li>
+        <li>Sports</li>
+        <li>My List</li>
+      </ul>
+    </nav>
+    <button id="search-btn">🔍</button>
   </header>
 
-  <h2 class="row-title">Featured</h2>
-  <div class="main-slider" id="main-slider">
-    <div class="track" id="main-track">
-      {% for v in videos %}
-      <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-        <div class="title">{{ v.title }}</div>
+  <main>
+    <h2 class="row-title">Featured</h2>
+    <div class="carousel main-slider" id="main-slider">
+      <div class="track" id="main-track">
+        {% for v in videos %}
+        <div class="card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+          <div class="title">{{ v.title }}</div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      <button class="nav-arrow left-arrow" id="left-arrow">‹</button>
+      <button class="nav-arrow right-arrow" id="right-arrow">›</button>
     </div>
-    <button class="nav-arrow left-arrow" id="left-arrow">←</button>
-    <button class="nav-arrow right-arrow" id="right-arrow">→</button>
-  </div>
 
-  <!-- Recommendation Rows -->
-  <div class="row">
-    <h2 class="row-title">Recommended</h2>
-    <div class="small-slider" id="rec-slider">
-      {% for v in videos %}
-      <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-        <div class="title">{{ v.title }}</div>
+    <section class="row">
+      <h2 class="row-title">Recommended</h2>
+      <div class="small-slider" id="rec-slider">
+        {% for v in videos %}
+        <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+          <div class="title">{{ v.title }}</div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
-  </div>
-  <div class="row">
-    <h2 class="row-title">New Releases</h2>
-    <div class="small-slider" id="new-slider">
-      {% for v in videos %}
-      <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-        <div class="title">{{ v.title }}</div>
+    </section>
+
+    <section class="row">
+      <h2 class="row-title">New Releases</h2>
+      <div class="small-slider" id="new-slider">
+        {% for v in videos %}
+        <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+          <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+          <div class="title">{{ v.title }}</div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
-  </div>
-  <div class="row">
-    <h2 class="row-title">Trending</h2>
-    <div class="small-slider" id="trend-slider">
-      {% for v in videos %}
-      <div class="small-card" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-        <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-        <div class="title">{{ v.title }}</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
+    </section>
+
+    <section class="row">
+      <h2 class="row-title">Trending</n    </section>
+  </main>
 
   <!-- Detail View -->
   <div id="detail-view">
@@ -97,54 +345,37 @@
     </div>
   </div>
 
-  <!-- Search Slide -->
-  <div id="search-slide" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box;">
-    <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
-    <h2 style="text-align: center; margin-bottom: 20px;">Search Videos</h2>
-    <input type="text" id="search-input" placeholder="Search by title..." style="width: 100%; padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none;">
+  <!-- Search Overlay -->
+  <div id="search-slide">
+    <button id="close-search">×</button>
+    <h2>Search Videos</h2>
+    <input type="text" id="search-input" placeholder="Search by title...">
     <div id="search-results" class="small-slider"></div>
   </div>
 
   <script>
     const BOT_USERNAME = '{{ bot_username }}';
-    // Collect video data
     const videos = Array.from(document.querySelectorAll('.card, .small-card')).map(card => ({
       thumb: card.getAttribute('data-thumb'),
       title: card.getAttribute('data-title'),
       key: card.getAttribute('data-key')
     }));
-
-    // Main slider
+    // Main slider logic
     let idx = 0;
     const mTrack = document.getElementById('main-track');
     const mCards = mTrack.children;
-    function showMain(i) {
-      idx = (i + mCards.length) % mCards.length;
-      mTrack.style.transform = `translateX(-${idx * 100}%)`;
-    }
+    function showMain(i) { idx = (i + mCards.length) % mCards.length; mTrack.style.transform = `translateX(-${idx * 100}%)`; }
     setInterval(() => showMain(idx + 1), 5000);
     document.getElementById('left-arrow').onclick = () => showMain(idx - 1);
     document.getElementById('right-arrow').onclick = () => showMain(idx + 1);
-
-    // Shuffle Trending on client
-    function shuffleSlider(id) {
-      const slider = document.getElementById(id);
-      const cards = Array.from(slider.children);
-      for (let i = cards.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        slider.append(cards[j]);
-        cards.splice(j, 1);
-      }
-    }
+    // Shuffle Trending on load
+    function shuffleSlider(id) { const slider = document.getElementById(id); const cards = Array.from(slider.children);
+      cards.sort(() => Math.random() - 0.5).forEach(c => slider.append(c)); }
     document.addEventListener('DOMContentLoaded', () => shuffleSlider('trend-slider'));
-
-    // Card click (both main and small)
+    // Card click detail
     document.body.addEventListener('click', e => {
       const card = e.target.closest('.card, .small-card'); if (!card) return;
-      const thumb = card.getAttribute('data-thumb');
-      const title = card.getAttribute('data-title');
-      const key = card.getAttribute('data-key');
-      // populate detail
+      const thumb = card.dataset.thumb, title = card.dataset.title, key = card.dataset.key;
       document.getElementById('detail-thumb').src = thumb;
       document.getElementById('detail-thumb').alt = title;
       document.getElementById('detail-title').textContent = title;
@@ -152,42 +383,24 @@
       document.getElementById('open-link').style.display = 'none';
       document.getElementById('detail-get').disabled = false;
       document.getElementById('detail-get').onclick = () => startTimer(key);
-      // toggle views
-      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('main, header').forEach(el => el.style.display = 'none');
       document.getElementById('detail-view').style.display = 'block';
     });
-    // Back
     document.getElementById('back-to-gallery').onclick = () => {
       document.getElementById('detail-view').style.display = 'none';
-      document.querySelectorAll('.main-slider, .small-slider, .row-title').forEach(el => el.style.display = 'block');
+      document.querySelectorAll('main, header').forEach(el => el.style.display = 'block');
     };
-    // Timer -> show link
     function startTimer(key) {
-      const btn = document.getElementById('detail-get');
-      const link = document.getElementById('open-link');
-      btn.disabled = true;
-      let c = 5; // Reduced from 10s to 5s
-      btn.textContent = `Wait ${c}s...`;
+      const btn = document.getElementById('detail-get'), link = document.getElementById('open-link');
+      btn.disabled = true; let c = 5; btn.textContent = `Wait ${c}s...`;
       const iv = setInterval(() => {
-        c--;
-        if (c <= 0) {
-          clearInterval(iv);
-          btn.style.display = 'none';
-          link.style.display = 'block';
-          link.onclick = () => window.open(`https://t.me/${BOT_USERNAME}?start=${key}`, '_blank');
-        } else {
-          btn.textContent = `Wait ${c}s...`;
-        }
+        c--; if (c <= 0) { clearInterval(iv); btn.style.display = 'none'; link.style.display = 'block'; link.onclick = () => window.open(`https://t.me/${BOT_USERNAME}?start=${key}`, '_blank'); }
+        else btn.textContent = `Wait ${c}s...`;
       }, 1000);
     }
-
-    // Search functionality
-    document.getElementById('search-btn').onclick = () => {
-      document.getElementById('search-slide').style.display = 'block';
-    };
-    document.getElementById('close-search').onclick = () => {
-      document.getElementById('search-slide').style.display = 'none';
-    };
+    // Search overlay
+    document.getElementById('search-btn').onclick = () => document.getElementById('search-slide').style.display = 'block';
+    document.getElementById('close-search').onclick = () => document.getElementById('search-slide').style.display = 'none';
     document.getElementById('search-input').oninput = () => {
       const term = document.getElementById('search-input').value.toLowerCase();
       const results = videos.filter(v => v.title.toLowerCase().includes(term));
@@ -195,14 +408,8 @@
       resultsContainer.innerHTML = '';
       results.forEach(v => {
         const card = document.createElement('div');
-        card.className = 'small-card';
-        card.setAttribute('data-thumb', v.thumb);
-        card.setAttribute('data-title', v.title);
-        card.setAttribute('data-key', v.key);
-        card.innerHTML = `
-          <img src="${v.thumb}" alt="${v.title}">
-          <div class="title">${v.title}</div>
-        `;
+        card.className = 'small-card'; card.dataset.thumb = v.thumb; card.dataset.title = v.title; card.dataset.key = v.key;
+        card.innerHTML = `<img src="${v.thumb}" alt="${v.title}"><div class="title">${v.title}</div>`;
         resultsContainer.appendChild(card);
       });
     };
