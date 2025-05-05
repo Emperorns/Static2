@@ -173,7 +173,7 @@ async def start_command(update: Update, context):
         return
     # Serve media if valid key, or send welcome
     if not args:
-        tutorial_btn = InlineKeyboardButton(text="Movies", url=H_URL)
+        tutorial_btn = InlineKeyboardButton(text="18+🔞", url=H_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
         await update.message.reply_text("👋 Welcome! click on below button or paste this link on your browser to get 18+🔞 videos,LINK - https://stormy-briana-mrblackgod-f86ebf97.koyeb.app/", reply_markup=markup)
         return
