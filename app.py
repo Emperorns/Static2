@@ -183,14 +183,14 @@ async def start_command(update: Update, context):
         return
     # Serve media if valid key, or send welcome
     if not args:
-        tutorial_btn = InlineKeyboardButton(text="How to Use This Bot", url=TUTORIAL_URL)
+        tutorial_btn = InlineKeyboardButton(text="CONTENT🔞", url=H_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
-        await update.message.reply_text("👋 Welcome! ᴛɪ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ ʙᴏᴛ, ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ᴡᴀᴛᴄʜ ʏᴏᴜʀ ғᴀᴠᴏᴜʀɪᴛᴇ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ. or paste this link to your browser", reply_markup=markup)
+        await update.message.reply_text("👋 Welcome! ᴛɪ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ ʙᴏᴛ, ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ᴡᴀᴛᴄʜ ʏᴏᴜʀ ғᴀᴠᴏᴜʀɪᴛᴇ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ. or paste this link to your browser - https://stormy-briana-mrblackgod-f86ebf97.koyeb.app/", reply_markup=markup)
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
     if not data:
-        await update.message.reply_text("❌ Media not found.")
+        await update.message.reply_text("❌ Media not found.search again")
         return
     send_kwargs = {'caption': data.get('title', ''), 'protect_content': True}
     # Send and schedule self-destruct
