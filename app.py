@@ -1,222 +1,342 @@
-import os
-import pathlib
-import asyncio
-from threading import Thread
-from datetime import datetime, timedelta
-from flask import Flask, render_template, send_from_directory, jsonify, make_response
-from pymongo import MongoClient
-from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime Video</title>
+    <style>
+        /* Base Styles */
+        :root {
+            --bg: #0f171e;
+            --fg: #fff;
+            --accent: #00a8e1;
+            --radius: 6px;
+            --gap: 15px;
+            --transition: 0.3s;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--fg); font-family: 'Helvetica Neue', Arial, sans-serif; }
+        a { color: inherit; text-decoration: none; }
 
-# Load environment variables
-load_dotenv()
-BOT_TOKEN        = os.getenv('BOT_TOKEN')
-MONGODB_URI      = os.getenv('MONGODB_URI')
-DB_NAME          = os.getenv('DB_NAME')
-ADMIN_ID         = int(os.getenv('ADMIN_ID'))
-CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
-UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')        # e.g. '@updates_channel'
-CAPTCHA_URL      = os.getenv('CAPTCHA_URL')            # Link to captcha verification endpoint
-TUTORIAL_URL     = os.getenv('TUTORIAL_URL') 
-H_URL            = os.getenv('H_URL')# Tutorial on solving captcha
-LOG_CHANNEL      = os.getenv('LOG_CHANNEL')            # Chat ID or @username for logging verifications
-BOT_USERNAME     = os.getenv('BOT_USERNAME')
-PUBLIC_URL       = os.getenv('PUBLIC_URL')
-PORT             = int(os.getenv('PORT', 5000))
-VERIFY_INTERVAL  = timedelta(hours=2)
+        /* Header */
+        header {
+            display: flex; align-items: center; justify-content: center;
+            padding: 10px 12px; background: var(--bg);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent); text-align: center; }
+        .search { position: absolute; right: 12px; display: flex; align-items: center; }
+        .search-btn { background: none; border: none; color: var(--fg); font-size: 1rem; cursor: pointer; }
 
-# Flask app
-app = Flask(__name__)
+        /* Hero Section */
+        .hero {
+            position: relative; width: 100%; aspect-ratio: 16/9;
+            overflow: hidden; border-radius: var(--radius); margin: 12px 0;
+        }
+        .hero .track {
+            display: flex; transition: transform 0.5s ease;
+        }
+        .hero-slide {
+            flex: 0 0 100%; display: flex; flex-direction: column;
+            align-items: center; border-radius: var(--radius); overflow: hidden;
+        }
+        .hero-slide .image-container {
+            width: 100%; height: 100%; aspect-ratio: 16/9; position: relative;
+        }
+        .hero-slide img {
+            width: 100%; height: 100%; object-fit: cover;
+            border-radius: var(--radius);
+        }
+        .hero-slide .watch-now {
+            position: absolute; bottom: 10px; right: 10px;
+            padding: 6px 12px; border: none;
+            background: var(--accent); color: var(--fg); border-radius: var(--radius);
+            cursor: pointer; font-size: 0.8rem;
+        }
+        .hero-content {
+            width: 100%; background: rgba(0,0,0,0.7); padding: 12px;
+            text-align: center;
+        }
+        .hero-content h1 {
+            font-size: 1.2rem; margin-bottom: 6px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .hero-content p { font-size: 0.8rem; margin-bottom: 8px; }
 
-# MongoDB setup
-client = MongoClient(MONGODB_URI)
-db = client[DB_NAME]
-videos = db.videos
-users = db.users    # store user verification timestamps
+        /* Content Sections */
+        .content-section { margin: 15px 12px; }
+        .content-section h2 { font-size: 1rem; margin-bottom: 10px; }
+        .scroll-container {
+            overflow-x: auto; white-space: nowrap; scroll-behavior: smooth;
+            display: flex; gap: var(--gap); padding-bottom: 8px;
+        }
+        .scroll-container::-webkit-scrollbar { height: 4px; }
+        .scroll-container::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+        .thumbnail {
+            display: inline-flex; flex-direction: column;
+            min-width: 35vw; cursor: pointer; border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .thumbnail .image-container { aspect-ratio: 9/16; position: relative; }
+        .thumbnail img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius); }
+        .thumbnail .title {
+            font-size: 0.8rem; text-align: center; padding: 6px 0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
 
-# Thumbnails directory
-THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
-pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
+        /* More Files Section */
+        .more-files {
+            margin: 15px 12px;
+        }
+        .more-files h2 { font-size: 1rem; margin-bottom: 10px; }
+        .vertical-scroll {
+            display: flex; flex-direction: column; gap: var(--gap);
+            overflow-y: auto; padding-bottom: 20px; overflow: visible;
+        }
+        .vertical-scroll .thumbnail {
+            min-width: unset; width: 90vw; margin: 0 auto;
+        }
+        .vertical-scroll .image-container { aspect-ratio: 16/9; }
+        .vertical-scroll::-webkit-scrollbar { width: 4px; }
+        .vertical-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 
-# Initialize Telegram bot
-application = ApplicationBuilder().token(BOT_TOKEN).build()
+        /* Detail Overlay */
+        #detail-page {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column; align-items: center;
+            justify-content: center; padding: 20px; z-index: 200;
+        }
+        #detail-page.open { display: flex; }
+        #detail-content {
+            background: var(--bg); padding: 20px; border-radius: var(--radius);
+            max-width: 90%; width: 350px; text-align: center;
+        }
+        #detail-content img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
+        .btn {
+            margin-top: 10px; padding: 6px 12px; border: none;
+            background: var(--accent); color: var(--fg); border-radius: var(--radius);
+            cursor: pointer; font-size: 0.8rem;
+        }
+        .btn.secondary { background: transparent; border: 1px solid var(--fg); }
+        #timer { margin-top: 6px; font-size: 0.8rem; }
+        .ad-unit {
+            margin: 15px auto; max-width: 320px; height: 100px;
+            background: #333; display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius); font-size: 0.8rem;
+        }
 
-async def download_thumbnail(bot, thumb, key):
-    thumb_path = os.path.join(THUMB_DIR, f"{key}.jpg")
-    file = await bot.get_file(thumb.file_id)
-    await file.download_to_drive(thumb_path)
-    return f"{PUBLIC_URL}/thumbnails/{key}.jpg"
+        /* Search Overlay */
+        #search-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            display: none; flex-direction: column; padding: 20px; z-index: 150;
+        }
+        #search-overlay.open { display: flex; }
+        #search-overlay input {
+            padding: 6px; margin-bottom: 12px; border: none;
+            background: #333; color: var(--fg); border-radius: var(--radius);
+            font-size: 0.8rem;
+        }
+        #search-results {
+            flex: 1; overflow-y: auto; display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: var(--gap);
+        }
+        #search-results .thumbnail { width: 100%; }
+        #search-results .image-container { aspect-ratio: 16/9; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">Prime Video</div>
+        <div class="search">
+            <button class="search-btn">🔍</button>
+        </div>
+    </header>
 
-async def check_membership(bot, user_id):
-    try:
-        member = await bot.get_chat_member(UPDATES_CHANNEL, user_id)
-        return member.status not in ['left', 'kicked']
-    except Exception:
-        return False
+    <section class="hero" id="hero-slider">
+        <div class="track">
+            {% for v in videos %}
+            <div class="hero-slide" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+                <div class="image-container">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+                    <button class="watch-now">Watch Now</button>
+                </div>
+                <div class="hero-content">
+                    <h1>{{ v.title }}</h1>
+                    <p>Watch this exciting content now!</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
 
-async def is_verified(user_id):
-    record = users.find_one({'user_id': user_id})
-    if not record:
-        return False
-    last = record.get('last_verified')
-    if not last:
-        return False
-    return datetime.utcnow() - last < VERIFY_INTERVAL
+    <div class="ad-unit">Ad Unit Placeholder (320x100)</div>
 
-async def require_access(update: Update, context):
-    user_id = update.effective_user.id
-    # 1. Ensure user is in updates channel
-    if not await check_membership(context.bot, user_id):
-        join_button = InlineKeyboardButton(
-            text="Join Updates Channel", url=f"https://t.me/{UPDATES_CHANNEL.strip('@')}"
-        )
-        markup = InlineKeyboardMarkup([[join_button]])
-        await update.message.reply_text(
-            "🚨 You must join our updates channel to use this bot,then again send /start command. ", reply_markup=markup
-        )
-        return False
-    # 2. Ensure user has passed captcha within last 2 hours
-    if not await is_verified(user_id):
-        verify_btn = InlineKeyboardButton(text="Get file", url=CAPTCHA_URL)
-        tutorial_btn = InlineKeyboardButton(text="How to open✅", url=TUTORIAL_URL)
-        markup = InlineKeyboardMarkup([[verify_btn], [tutorial_btn]])
-        await update.message.reply_text(
-            "🛡️ click on get file button to download your file. ", 
-            reply_markup=markup
-        )
-        return False
-    return True
+    <section class="content-section">
+        <h2>Latest</h2>
+        <div class="scroll-container" id="latest-slider">
+            {% for v in videos %}
+            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+                <div class="image-container">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+                </div>
+                <div class="title">{{ v.title }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
 
-# Handler for admin uploads
-async def handle_media(update: Update, context):
-    user = update.effective_user
-    if not user or user.id != ADMIN_ID:
-        return
-    msg = update.message
-    media = msg.video or msg.document
-    if not media:
-        return
-    key = f"file_{media.file_unique_id}"
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔄 Processing admin upload {key}...")
-    thumb_url = ''
-    if msg.video:
-        thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
-        if thumb_attr:
-            photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-            thumb_url = await download_thumbnail(context.bot, photo, key)
-    sent = await context.bot.forward_message(
-        chat_id=CHANNEL_ID,
-        from_chat_id=msg.chat.id,
-        message_id=msg.message_id
-    )
-    file_id = sent.video.file_id if sent.video else sent.document.file_id
-    media_type = 'video' if sent.video else 'document'
-    title = msg.caption or (getattr(sent.document, 'file_name', '') if sent.document else 'Untitled')
-    videos.insert_one({
-        'file_id': file_id,
-        'custom_key': key,
-        'title': title,
-        'thumbnail_url': thumb_url,
-        'type': media_type
-    })
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Admin {media_type} saved: {title} ({key})")
+    <section class="content-section">
+        <h2>All Movies</h2>
+        <div class="scroll-container" id="all-movies-slider">
+            {% for v in videos %}
+            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+                <div class="image-container">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+                </div>
+                <div class="title">{{ v.title }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
 
-# Handler for channel posts
-async def channel_media(update: Update, context):
-    post = update.channel_post
-    if not post or post.chat.id != CHANNEL_ID:
-        return
-    media = post.video or post.document
-    if not media:
-        return
-    key = f"file_{media.file_unique_id}"
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔄 Processing channel media {key}...")
-    thumb_url = ''
-    if post.video:
-        thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
-        if thumb_attr:
-            photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-            thumb_url = await download_thumbnail(context.bot, photo, key)
-    file_id = media.file_id
-    media_type = 'video' if post.video else 'document'
-    title = post.caption or (getattr(media, 'file_name', '') if media else 'Untitled')
-    videos.insert_one({
-        'file_id': file_id,
-        'custom_key': key,
-        'title': title,
-        'thumbnail_url': thumb_url,
-        'type': media_type
-    })
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Channel {media_type} saved: {title} ({key})")
+    <section class="more-files">
+        <h2>More Files</h2>
+        <div class="vertical-scroll" id="more-files-slider">
+            {% for v in videos %}
+            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+                <div class="image-container">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+                </div>
+                <div class="title">{{ v.title }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
 
-# /start handler
-async def start_command(update: Update, context):
-    args = context.args
-    user_id = update.effective_user.id
-    # Catch verification callback
-    if args and args[0] == 'verified':
-        users.update_one(
-            {'user_id': user_id},
-            {'$set': {'last_verified': datetime.utcnow()}},
-            upsert=True
-        )
-        # Log to channel
-        await context.bot.send_message(
-            chat_id=LOG_CHANNEL,
-            text=f"🔐 User {user_id} verified at {datetime.utcnow().isoformat()}"
-        )
-        await update.message.reply_text("✅ You Earned a token! You can now use the bot for the next 2 hours without any ads. ")
-        return
-    # Check membership & captcha
-    if not await require_access(update, context):
-        return
-    # Serve media if valid key, or send welcome
-    if not args:
-        tutorial_btn = InlineKeyboardButton(text="18+🔞", url=H_URL)
-        markup = InlineKeyboardMarkup([[tutorial_btn]])
-        await update.message.reply_text("👋 Welcome! click on below button or paste this link on your browser to get 18+🔞 videos,LINK - https://stormy-briana-mrblackgod-f86ebf97.koyeb.app/", reply_markup=markup)
-        return
-    key = args[0]
-    data = videos.find_one({'custom_key': key})
-    if not data:
-        await update.message.reply_text("❌ Media not found.")
-        return
-    send_kwargs = {'caption': data.get('title', ''), 'protect_content': True}
-    if data['type'] == 'video':
-        await context.bot.send_video(update.effective_chat.id, data['file_id'], **send_kwargs)
-    else:
-        await context.bot.send_document(update.effective_chat.id, data['file_id'], **send_kwargs)
+    <div id="detail-page">
+        <div id="detail-content">
+            <img id="detail-thumb" src="" alt="">
+            <h2 id="detail-title"></h2>
+            <button class="btn" id="get-file">Get File</button>
+            <div id="timer"></div>
+            <button class="btn" id="open-link" style="display:none;">Open File</button>
+            <button class="btn secondary" id="close-detail">Close</button>
+            <div class="ad-unit">Ad Unit Placeholder (320x100)</div>
+        </div>
+    </div>
 
-# Register handlers
-application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
-application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document.ALL), channel_media))
-application.add_handler(CommandHandler("start", start_command))
+    <div id="search-overlay">
+        <input type="text" id="overlay-search" placeholder="Search by title...">
+        <div id="search-results"></div>
+        <button class="btn secondary" id="close-search">Close</button>
+    </div>
 
-# Flask routes
-@app.route('/')
-def index():
-    vids = list(videos.find().sort('_id', -1))
-    return render_template('index.html', videos=vids, bot_username=BOT_USERNAME)
+    <script>
+        const BOT_USERNAME = '{{ bot_username }}';
 
-@app.route('/thumbnails/<path:fname>')
-def thumbs(fname):
-    resp = make_response(send_from_directory(THUMB_DIR, fname))
-    resp.headers['Cache-Control'] = 'public, max-age=31536000'
-    return resp
+        // Collect video data
+        const videos = Array.from(document.querySelectorAll('.hero-slide, .thumbnail')).map(item => ({
+            thumb: item.getAttribute('data-thumb'),
+            title: item.getAttribute('data-title'),
+            key: item.getAttribute('data-key')
+        }));
 
-@app.route('/api/videos')
-def api_videos():
-    return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
+        // Hero Slider Auto-scroll
+        let idx = 0;
+        const heroTrack = document.querySelector('.hero .track');
+        const heroSlides = document.querySelectorAll('.hero-slide');
+        function showHero(i) {
+            idx = (i + heroSlides.length) % heroSlides.length;
+            heroTrack.style.transform = `translateX(-${idx * 100}%)`;
+        }
+        const autoScroll = setInterval(() => showHero(idx + 1), 5000);
 
-# Run bot and web server
-if __name__ == '__main__':
-    def run_bot():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(application.initialize())
-        loop.run_until_complete(application.start())
-        loop.run_until_complete(application.updater.start_polling())
-        loop.run_forever()
-    Thread(target=run_bot, daemon=True).start()
-    app.run(host='0.0.0.0', port=PORT)
+        // Shuffle All Movies Slider
+        function shuffleSlider(id) {
+            const slider = document.getElementById(id);
+            const items = Array.from(slider.children);
+            for (let i = items.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                slider.appendChild(items[j]);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => shuffleSlider('all-movies-slider'));
+
+        // Thumbnail Click
+        document.body.addEventListener('click', e => {
+            const item = e.target.closest('.hero-slide, .thumbnail, .watch-now');
+            if (!item) return;
+            const thumb = item.getAttribute('data-thumb');
+            const title = item.getAttribute('data-title');
+            const key = item.getAttribute('data-key');
+            document.getElementById('detail-thumb').src = thumb;
+            document.getElementById('detail-title').textContent = title;
+            document.getElementById('get-file').style.display = 'inline-block';
+            document.getElementById('open-link').style.display = 'none';
+            document.getElementById('get-file').disabled = false;
+            document.getElementById('timer').textContent = '';
+            document.getElementById('get-file').onclick = () => startTimer(key);
+            document.getElementById('detail-page').classList.add('open');
+        });
+
+        // Close Detail
+        document.getElementById('close-detail').onclick = () => {
+            document.getElementById('detail-page').classList.remove('open');
+        };
+
+        // Timer for Telegram Link
+        function startTimer(key) {
+            const btn = document.getElementById('get-file');
+            const link = document.getElementById('open-link');
+            const timerEl = document.getElementById('timer');
+            btn.disabled = true;
+            let c = 5;
+            timerEl.textContent = `Wait ${c}s...`;
+            const iv = setInterval(() => {
+                c--;
+                if (c <= 0) {
+                    clearInterval(iv);
+                    btn.style.display = 'none';
+                    link.style.display = 'block';
+                    timerEl.textContent = '';
+                    link.onclick = () => window.open(`https://t.me/${BOT_USERNAME}?start=${key}`, '_blank');
+                } else {
+                    timerEl.textContent = `Wait ${c}s...`;
+                }
+            }, 1000);
+        }
+
+        // Search Functionality
+        document.querySelector('.search-btn').onclick = () => {
+            document.getElementById('search-overlay').classList.add('open');
+            document.getElementById('overlay-search').focus();
+        };
+        document.getElementById('close-search').onclick = () => {
+            document.getElementById('search-overlay').classList.remove('open');
+            document.getElementById('overlay-search').value = '';
+            document.getElementById('search-results').innerHTML = '';
+        };
+        document.getElementById('overlay-search').oninput = () => {
+            const term = document.getElementById('overlay-search').value.toLowerCase();
+            const results = videos.filter(v => v.title.toLowerCase().includes(term));
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '';
+            results.forEach(v => {
+                const thumbnail = document.createElement('div');
+                thumbnail.className = 'thumbnail';
+                thumbnail.setAttribute('data-thumb', v.thumb);
+                thumbnail.setAttribute('data-title', v.title);
+                thumbnail.setAttribute('data-key', v.key);
+                thumbnail.innerHTML = `
+                    <div class="image-container">
+                        <img src="${v.thumb}" alt="${v.title}">
+                    </div>
+                    <div class="title">${v.title}</div>
+                `;
+                resultsContainer.appendChild(thumbnail);
+            });
+        };
+    </script>
+</body>
+</html>
