@@ -18,7 +18,7 @@ ADMIN_ID         = int(os.getenv('ADMIN_ID'))
 CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
 UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')        # e.g. '@updates_channel'
 CAPTCHA_URL      = os.getenv('CAPTCHA_URL')            # Link to captcha verification endpoint
-TUTORIAL_URL     = os.getenv('TUTORIAL_URL') 
+H_URL            = os.getenv('H_URL') 
 TUTORIAL_URL     = os.getenv('TUTORIAL_URL')# Tutorial on solving captcha
 LOG_CHANNEL      = os.getenv('LOG_CHANNEL')            # Chat ID or @username for logging verifications
 BOT_USERNAME     = os.getenv('BOT_USERNAME')
@@ -83,16 +83,16 @@ async def require_access(update: Update, context):
         )
         markup = InlineKeyboardMarkup([[join_button]])
         await update.message.reply_text(
-            "🚨 You must join our updates channel to use this bot.", reply_markup=markup
+            "🚨 You must join our updates channel to use this bot .After joined send /start command again. ", reply_markup=markup
         )
         return False
     # 2. Ensure user has passed captcha within last 2 hours
     if not await is_verified(user_id):
-        verify_btn = InlineKeyboardButton(text="Verify Human", url=CAPTCHA_URL)
-        tutorial_btn = InlineKeyboardButton(text="How to Solve Captcha", url=TUTORIAL_URL)
+        verify_btn = InlineKeyboardButton(text="Get Free Token", url=CAPTCHA_URL)
+        tutorial_btn = InlineKeyboardButton(text="How to open✅", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[verify_btn], [tutorial_btn]])
         await update.message.reply_text(
-            "🛡️ Please verify you are human before using the bot (valid for 2 hours).", 
+            "🛡️ CLICK ON GET FREE TOKEN BUTTON, ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ғʀᴇᴇ ᴛᴏᴋᴇɴ, ᴀғᴛᴇʀ ᴛʜᴀᴛ ʏᴏᴜ ᴀʀᴇ ᴀʙʟᴇ ᴛᴏ ᴜsᴇ ᴛʜɪs ʙᴏᴛ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴘʀᴏʙʟᴇᴍ ᴏʀ ᴀᴅs. ᴡᴇ ᴛᴏᴏ ᴅᴏɴ'ᴛ ᴡᴀɴᴛ ɪʀʀɪᴛᴀᴛᴇᴅ ᴀᴅs ɪɴ ᴏᴜʀ sᴇʀᴠɪᴄᴇ ʙᴜᴛ ɪᴛ ɪs ɴᴇᴄᴇssᴀʀʏ ғᴏʀ ᴘᴀʏɪɴɢ ʜɪɢʜ sᴇʀᴠᴇʀ ᴄᴏsᴛs, ᴏɴᴄᴇ ʏᴏᴜ ᴇᴀʀɴᴇᴅ ᴛᴏᴋᴇɴ ʏᴏᴜ ᴡɪʟʟ ʜᴀᴠᴇ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴇss ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ғᴜʀᴛʜᴇʀ ᴀᴅs👍", 
             reply_markup=markup
         )
         return False
