@@ -176,7 +176,7 @@ async def start_command(update: Update, context):
             chat_id=LOG_CHANNEL,
             text=f"🔐 User {user_id} verified at {datetime.utcnow().isoformat()}"
         )
-        await update.message.reply_text("✅ Verification successful! You can now use the bot for the next 2 hours.")
+        await update.message.reply_text("✅ You Earned a Token! Now You can now use the bot without any ads for the next 2 hours.")
         return
     # Check membership & captcha
     if not await require_access(update, context):
@@ -185,7 +185,7 @@ async def start_command(update: Update, context):
     if not args:
         tutorial_btn = InlineKeyboardButton(text="How to Use This Bot", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
-        await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.", reply_markup=markup)
+        await update.message.reply_text("👋 Welcome! ᴛɪ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ ʙᴏᴛ, ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ᴡᴀᴛᴄʜ ʏᴏᴜʀ ғᴀᴠᴏᴜʀɪᴛᴇ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ. or paste this link to your browser", reply_markup=markup)
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
