@@ -153,51 +153,6 @@
         </div>
     </header>
 
-    <section class="hero" id="hero-slider">
-        <div class="track">
-            {% for v in videos %}
-            <div class="hero-slide" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-                <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-                    <button class="watch-now">Watch Now</button>
-                </div>
-                <div class="hero-content">
-                    <h1>{{ v.title }}</h1>
-                    <p>Watch this exciting content now!</p>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="content-section">
-        <h2>Latest</h2>
-        <div class="scroll-container" id="latest-slider">
-            {% for v in videos %}
-            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-                <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-                </div>
-                <div class="title">{{ v.title }}</div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="content-section">
-        <h2>All Movies</h2>
-        <div class="scroll-container" id="all-movies-slider">
-            {% for v in videos %}
-            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
-                <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
-                </div>
-                <div class="title">{{ v.title }}</div>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
     <section class="more-files">
         <h2>More Files</h2>
         <div class="vertical-scroll" id="more-files-slider">
