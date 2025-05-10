@@ -71,13 +71,13 @@
         }
         .thumbnail .image-container {
             width: 100%;
-            aspect-ratio: 16/9;
-            position: relative;
+            /* Allow natural height */
         }
         .thumbnail img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
+            object-fit: contain;
+            display: block;
         }
         .thumbnail .title {
             font-size: 1rem;
@@ -108,8 +108,8 @@
         }
         #detail-content img {
             width: 100%;
-            aspect-ratio: 16/9;
-            object-fit: cover;
+            height: auto;
+            object-fit: contain;
             border-radius: var(--radius);
             margin-bottom: 0.75rem;
         }
