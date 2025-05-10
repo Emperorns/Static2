@@ -26,7 +26,8 @@ PORT             = int(os.getenv('PORT', 5000))
 VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
 
-# Initialize Flask app\app = Flask(__name__)
+# Initialize Flask app
+app = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -90,14 +91,17 @@ async def delete_message_job(context):
     except:
         pass
 
-# Handlers
+# Handlers registration
+
 def register_handlers():
     async def handle_media(update: Update, context):
         user = update.effective_user
-        if not user or user.id != ADMIN_ID: return
+        if not user or user.id != ADMIN_ID:
+            return
         msg = update.message
         media = msg.video or msg.document
-        if not media: return
+        if not media:
+            return
         key = f"file_{media.file_unique_id}"
         thumb_url = ''
         if msg.video:
@@ -119,7 +123,8 @@ def register_handlers():
 
     async def channel_media(update: Update, context):
         post = update.channel_post
-        if not post or post.chat.id != CHANNEL_ID: return
+        if not post or post.chat.id != CHANNEL_ID:
+            return
         media = post.video or post.document
         key = f"file_{media.file_unique_id}"
         thumb_url = ''
@@ -145,7 +150,8 @@ def register_handlers():
             await context.bot.send_message(LOG_CHANNEL, f"🔐 User {uid} verified")
             await update.message.reply_text("✅ Verified for 2 hours")
             return
-        if not await require_access(update, context): return
+        if not await require_access(update, context):
+            return
         if not args:
             btn = InlineKeyboardButton("How to Use", url=TUTORIAL_URL)
             await update.message.reply_text("👋 Welcome!", reply_markup=InlineKeyboardMarkup([[btn]]))
@@ -167,7 +173,8 @@ def register_handlers():
     application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document.ALL), channel_media))
     application.add_handler(CommandHandler('start', start_command))
 
-# Routes
+# Routes registration
+
 def register_routes():
     @app.route('/')
     def index():
@@ -177,34 +184,32 @@ def register_routes():
     @app.route('/file/<key>')
     def file_page(key):
         rec = videos.find_one({'custom_key': key})
-        if not rec: return "File not found", 404
+        if not rec:
+            return "File not found", 404
         return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url',''), title=rec.get('title','Untitled'), bot_username=BOT_USERNAME)
 
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
         rec = videos.find_one({'custom_key': key})
-        if not rec or 'file_id' not in rec: return "", 404
-        tg_file = sync_bot.get_file(rec['file_id'])
+        if not rec or 'file_id' not in rec:
+            return "", 404
+        tf = sync_bot.get_file(rec['file_id'])
         buf = io.BytesIO()
-        tg_file.download(out=buf)
+        tf.download(out=buf)
         buf.seek(0)
         return send_file(buf, mimetype='image/jpeg', cache_timeout=0)
 
     @app.route('/api/videos')
     def api_videos():
-        return jsonify(list(videos.find({}, {'_id':0}).sort('_id', -1)))
+        return jsonify(list(videos.find({}, {'_id':0}).sort('_id',-1)))
 
-# Main entry
-def main():
+# Main entrypoint
+
+if __name__ == '__main__':
     register_handlers()
     register_routes()
-    # Start bot in background
     loop = get_event_loop()
     loop.run_until_complete(application.initialize())
     Thread(target=lambda: loop.run_until_complete(application.start()), daemon=True).start()
     loop.run_until_complete(application.updater.start_polling())
-    # Start Flask app
     app.run(host='0.0.0.0', port=PORT)
-
-if __name__ == '__main__':
-    main()
