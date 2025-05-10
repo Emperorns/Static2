@@ -113,12 +113,12 @@
         <h2>More Files</h2>
         <div class="vertical-scroll" id="more-files-slider">
             {% for v in videos %}
-            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
+            <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
                 <div class="image-container">
                     <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
                 </div>
                 <div class="title">{{ v.title }}</div>
-            </div>
+            </a>
             {% endfor %}
         </div>
     </section>
@@ -147,20 +147,22 @@
         const videos = Array.from(document.querySelectorAll('.thumbnail')).map(item => ({
             thumb: item.getAttribute('data-thumb'),
             title: item.getAttribute('data-title'),
-            key: item.getAttribute('data-key')
+            key: item.getAttribute('href').split('/file/')[1]
         }));
 
         // Thumbnail Click → Detail Overlay
         document.body.addEventListener('click', e => {
             const item = e.target.closest('.thumbnail');
             if (!item) return;
+            e.preventDefault();
             const thumb = item.getAttribute('data-thumb');
             const title = item.getAttribute('data-title');
-            const key = item.getAttribute('data-key');
+            const key = item.getAttribute('href').split('/file/')[1];
             document.getElementById('detail-thumb').src = thumb;
             document.getElementById('detail-title').textContent = title;
             document.getElementById('get-file').onclick = () => {
-                window.location = `/file/${key}`;
+                // Open file page in a new tab/window
+                window.open(`/file/${key}`, '_blank');
             };
             document.getElementById('detail-page').classList.add('open');
             if (window._shareustag) {
@@ -191,11 +193,11 @@
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '';
             results.forEach(v => {
-                const thumbnail = document.createElement('div');
+                const thumbnail = document.createElement('a');
                 thumbnail.className = 'thumbnail';
+                thumbnail.href = `/file/${v.key}`;
                 thumbnail.setAttribute('data-thumb', v.thumb);
                 thumbnail.setAttribute('data-title', v.title);
-                thumbnail.setAttribute('data-key', v.key);
                 thumbnail.innerHTML = `
                     <div class="image-container">
                         <img src="${v.thumb}" alt="${v.title}">
