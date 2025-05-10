@@ -2,91 +2,193 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Prime Video</title>
     <style>
-        /* Base Styles */
+        /* Mobile-First Base Styles */
         :root {
             --bg: #0f171e;
             --fg: #fff;
             --accent: #00a8e1;
             --radius: 6px;
-            --gap: 15px;
+            --gap: 12px;
             --transition: 0.3s;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--fg); font-family: 'Helvetica Neue', Arial, sans-serif; }
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.4;
+            padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+        }
         a { color: inherit; text-decoration: none; }
 
         /* Header */
         header {
-            display: flex; align-items: center; justify-content: center;
-            padding: 10px 12px; background: var(--bg);
-            position: sticky; top: 0; z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent); text-align: center; }
-        .search { position: absolute; right: 12px; display: flex; align-items: center; }
-        .search-btn { background: none; border: none; color: var(--fg); font-size: 1rem; cursor: pointer; }
+        .logo {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .search-btn {
+            background: none;
+            border: none;
+            color: var(--fg);
+            font-size: 1.6rem;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
 
         /* More Files Section */
         .more-files {
-            margin: 15px 12px;
+            margin: 1rem;
         }
-        .more-files h2 { font-size: 1rem; margin-bottom: 10px; }
+        .more-files h2 {
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
         .vertical-scroll {
-            display: flex; flex-direction: column; gap: var(--gap);
-            overflow-y: auto; padding-bottom: 20px; overflow: visible;
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap);
+            overflow-y: auto;
+            padding-bottom: 1rem;
         }
         .vertical-scroll .thumbnail {
-            min-width: unset; width: 90vw; margin: 0 auto;
+            width: 100%;
+            border-radius: var(--radius);
+            overflow: hidden;
         }
-        .vertical-scroll .image-container { aspect-ratio: 16/9; }
-        .vertical-scroll::-webkit-scrollbar { width: 4px; }
-        .vertical-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+        .thumbnail .image-container {
+            width: 100%;
+            /* Allow natural height */
+        }
+        .thumbnail img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+        .thumbnail .title {
+            font-size: 1rem;
+            padding: 0.5rem;
+            text-align: center;
+        }
 
         /* Detail Overlay */
         #detail-page {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-            display: none; flex-direction: column; align-items: center;
-            justify-content: center; padding: 20px; z-index: 200;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            z-index: 200;
         }
         #detail-page.open { display: flex; }
         #detail-content {
-            background: var(--bg); padding: 20px; border-radius: var(--radius);
-            max-width: 90%; width: 350px; text-align: center;
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
         }
-        #detail-content img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
+        #detail-content img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            border-radius: var(--radius);
+            margin-bottom: 0.75rem;
+        }
         .btn {
-            margin-top: 10px; padding: 6px 12px; border: none;
-            background: var(--accent); color: var(--fg); border-radius: var(--radius);
-            cursor: pointer; font-size: 0.8rem;
+            margin-top: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: var(--accent);
+            color: var(--fg);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
         }
-        .btn.secondary { background: transparent; border: 1px solid var(--fg); }
-        #timer { margin-top: 6px; font-size: 0.8rem; }
+        .btn.secondary {
+            background: transparent;
+            border: 1px solid var(--fg);
+        }
+        #timer {
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
         .ad-unit {
-            margin: 10px auto; max-width: 320px; height: 100px;
-            background: #333; display: flex; align-items: center; justify-content: center;
-            border-radius: var(--radius); font-size: 0.8rem;
+            margin: 1rem auto;
+            width: 100%;
+            max-width: 320px;
+            height: 100px;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
         }
 
         /* Search Overlay */
         #search-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
-            display: none; flex-direction: column; padding: 20px; z-index: 150;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            padding: 1rem;
+            z-index: 150;
         }
         #search-overlay.open { display: flex; }
         #search-overlay input {
-            padding: 6px; margin-bottom: 12px; border: none;
-            background: #333; color: var(--fg); border-radius: var(--radius);
-            font-size: 0.8rem;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: none;
+            background: #333;
+            color: var(--fg);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            width: 100%;
         }
         #search-results {
-            flex: 1; overflow-y: auto; display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             gap: var(--gap);
         }
-        #search-results .thumbnail { width: 100%; }
-        #search-results .image-container { aspect-ratio: 16/9; }
+        #search-results .thumbnail {
+            width: 100%;
+        }
+
+        /* Desktop Enhancements */
+        @media (min-width: 768px) {
+            .vertical-scroll {
+                flex-direction: column;
+            }
+            .btn {
+                font-size: 0.9rem;
+                max-width: 200px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
     </style>
     <!-- Load the ad script and define the slot -->
     <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js"></script>
@@ -104,9 +206,7 @@
 <body>
     <header>
         <div class="logo">Prime Video</div>
-        <div class="search">
-            <button class="search-btn">🔍</button>
-        </div>
+        <button class="search-btn" aria-label="Search">🔍</button>
     </header>
 
     <section class="more-files">
@@ -115,7 +215,7 @@
             {% for v in videos %}
             <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
                 <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }} thumbnail">
                 </div>
                 <div class="title">{{ v.title }}</div>
             </a>
@@ -125,7 +225,7 @@
 
     <div id="detail-page">
         <div id="detail-content">
-            <img id="detail-thumb" src="" alt="">
+            <img id="detail-thumb" src="" alt="Detail thumbnail">
             <h2 id="detail-title"></h2>
             <button class="btn" id="get-file">Get File</button>
             <div id="timer"></div>
@@ -142,7 +242,6 @@
 
     <script>
         const BOT_USERNAME = '{{ bot_username }}';
-
         // Collect video data
         const videos = Array.from(document.querySelectorAll('.thumbnail')).map(item => ({
             thumb: item.getAttribute('data-thumb'),
@@ -161,7 +260,6 @@
             document.getElementById('detail-thumb').src = thumb;
             document.getElementById('detail-title').textContent = title;
             document.getElementById('get-file').onclick = () => {
-                // Open file page in a new tab/window
                 window.open(`/file/${key}`, '_blank');
             };
             document.getElementById('detail-page').classList.add('open');
@@ -171,12 +269,10 @@
                 });
             }
         });
-
         // Close Detail Overlay
         document.getElementById('close-detail').onclick = () => {
             document.getElementById('detail-page').classList.remove('open');
         };
-
         // Search Functionality
         document.querySelector('.search-btn').onclick = () => {
             document.getElementById('search-overlay').classList.add('open');
@@ -200,7 +296,7 @@
                 thumbnail.setAttribute('data-title', v.title);
                 thumbnail.innerHTML = `
                     <div class="image-container">
-                        <img src="${v.thumb}" alt="${v.title}">
+                        <img src="${v.thumb}" alt="${v.title} thumbnail">
                     </div>
                     <div class="title">${v.title}</div>
                 `;
