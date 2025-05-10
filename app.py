@@ -1,4 +1,5 @@
 import os
+import io
 import pathlib
 import asyncio
 from threading import Thread
@@ -27,7 +28,7 @@ VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
 
 # Flask app
-app = Flask(__name__)
+tapp = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -218,25 +219,23 @@ def file_page(key):
         bot_username=BOT_USERNAME
     )
 
-# Dynamic thumbnail fetch route
 @app.route('/thumbnails/<key>.jpg')
 def serve_thumbnail(key):
-    thumb_path = os.path.join(THUMB_DIR, f"{key}.jpg")
-    if not os.path.isfile(thumb_path):
-        # Fetch thumbnail from Telegram if not present
-        record = videos.find_one({'custom_key': key})
-        if record and record.get('thumbnail_url') is None:
-            # Attempt to download using file_id
-            file_id = record.get('file_id')
-            if file_id:
-                tg_file = sync_bot.get_file(file_id)
-                tg_file.download(custom_path=thumb_path)
-        # If still not found, return 404
-        if not os.path.isfile(thumb_path):
-            return "", 404
-    response = make_response(send_file(thumb_path))
-    response.headers['Cache-Control'] = 'public, max-age=3600'
-    return response
+    # Always fetch fresh thumbnail from Telegram
+    record = videos.find_one({'custom_key': key})
+    if not record or not record.get('file_id'):
+        return "", 404
+    tg_file = sync_bot.get_file(record['file_id'])
+    bio = io.BytesIO()
+    tg_file.download(out=bio)
+    bio.seek(0)
+    return send_file(
+        bio,
+        mimetype='image/jpeg',
+        as_attachment=False,
+        attachment_filename=f"{key}.jpg",
+        cache_timeout=0
+    )
 
 @app.route('/api/videos')
 def api_videos():
