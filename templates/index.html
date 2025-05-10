@@ -2,188 +2,91 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prime Video</title>
     <style>
-        /* Mobile-First Base Styles */
+        /* Base Styles */
         :root {
             --bg: #0f171e;
             --fg: #fff;
             --accent: #00a8e1;
             --radius: 6px;
-            --gap: 12px;
+            --gap: 15px;
             --transition: 0.3s;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background: var(--bg);
-            color: var(--fg);
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.4;
-            padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
-        }
+        body { background: var(--bg); color: var(--fg); font-family: 'Helvetica Neue', Arial, sans-serif; }
         a { color: inherit; text-decoration: none; }
 
         /* Header */
         header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem;
-            background: var(--bg);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            padding: 10px 12px; background: var(--bg);
+            position: sticky; top: 0; z-index: 100;
         }
-        .logo {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: var(--accent);
-        }
-        .search-btn {
-            background: none;
-            border: none;
-            color: var(--fg);
-            font-size: 1.6rem;
-            padding: 0.5rem;
-            cursor: pointer;
-        }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent); text-align: center; }
+        .search { position: absolute; right: 12px; display: flex; align-items: center; }
+        .search-btn { background: none; border: none; color: var(--fg); font-size: 1rem; cursor: pointer; }
 
         /* More Files Section */
         .more-files {
-            margin: 1rem;
+            margin: 15px 12px;
         }
-        .more-files h2 {
-            font-size: 1.2rem;
-            margin-bottom: 0.75rem;
-        }
+        .more-files h2 { font-size: 1rem; margin-bottom: 10px; }
         .vertical-scroll {
-            display: flex;
-            flex-direction: column;
-            gap: var(--gap);
-            overflow-y: auto;
-            padding-bottom: 1rem;
+            display: flex; flex-direction: column; gap: var(--gap);
+            overflow-y: auto; padding-bottom: 20px; overflow: visible;
         }
         .vertical-scroll .thumbnail {
-            width: 100%;
-            border-radius: var(--radius);
-            overflow: hidden;
+            min-width: unset; width: 90vw; margin: 0 auto;
         }
-        .thumbnail .image-container {
-            width: 100%;
-        }
-        .thumbnail img {
-            width: 100%;
-            height: auto;
-            object-fit: contain;
-            display: block;
-        }
-        .thumbnail .title {
-            font-size: 1rem;
-            padding: 0.5rem;
-            text-align: center;
-        }
+        .vertical-scroll .image-container { aspect-ratio: 16/9; }
+        .vertical-scroll::-webkit-scrollbar { width: 4px; }
+        .vertical-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
 
         /* Detail Overlay */
         #detail-page {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.95);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
-            z-index: 200;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column; align-items: center;
+            justify-content: center; padding: 20px; z-index: 200;
         }
         #detail-page.open { display: flex; }
         #detail-content {
-            background: var(--bg);
-            padding: 1rem;
-            border-radius: var(--radius);
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
+            background: var(--bg); padding: 20px; border-radius: var(--radius);
+            max-width: 90%; width: 350px; text-align: center;
         }
-        #detail-content img {
-            width: 100%;
-            height: auto;
-            object-fit: contain;
-            border-radius: var(--radius);
-            margin-bottom: 0.75rem;
-        }
+        #detail-content img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
         .btn {
-            margin-top: 0.75rem;
-            padding: 0.75rem 1rem;
-            border: none;
-            background: var(--accent);
-            color: var(--fg);
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-size: 1rem;
-            width: 100%;
+            margin-top: 10px; padding: 6px 12px; border: none;
+            background: var(--accent); color: var(--fg); border-radius: var(--radius);
+            cursor: pointer; font-size: 0.8rem;
         }
-        .btn.secondary {
-            background: transparent;
-            border: 1px solid var(--fg);
-        }
-        #timer {
-            margin-top: 0.5rem;
-            font-size: 1rem;
-        }
+        .btn.secondary { background: transparent; border: 1px solid var(--fg); }
+        #timer { margin-top: 6px; font-size: 0.8rem; }
         .ad-unit {
-            margin: 1rem auto;
-            width: 100%;
-            max-width: 320px;
-            height: 100px;
-            background: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius);
-            font-size: 0.9rem;
+            margin: 10px auto; max-width: 320px; height: 100px;
+            background: #333; display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius); font-size: 0.8rem;
         }
 
         /* Search Overlay */
         #search-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.9);
-            display: none;
-            flex-direction: column;
-            padding: 1rem;
-            z-index: 150;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            display: none; flex-direction: column; padding: 20px; z-index: 150;
         }
         #search-overlay.open { display: flex; }
         #search-overlay input {
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border: none;
-            background: #333;
-            color: var(--fg);
-            border-radius: var(--radius);
-            font-size: 1rem;
-            width: 100%;
+            padding: 6px; margin-bottom: 12px; border: none;
+            background: #333; color: var(--fg); border-radius: var(--radius);
+            font-size: 0.8rem;
         }
         #search-results {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            flex: 1; overflow-y: auto; display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: var(--gap);
         }
-        #search-results .thumbnail {
-            width: 100%;
-        }
-
-        /* Desktop Enhancements */
-        @media (min-width: 768px) {
-            .btn {
-                max-width: 200px;
-                margin: 0 auto;
-                font-size: 0.9rem;
-            }
-        }
+        #search-results .thumbnail { width: 100%; }
+        #search-results .image-container { aspect-ratio: 16/9; }
     </style>
     <!-- Load the ad script and define the slot -->
     <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js"></script>
@@ -201,26 +104,28 @@
 <body>
     <header>
         <div class="logo">Prime Video</div>
-        <button class="search-btn" aria-label="Search">🔍</button>
+        <div class="search">
+            <button class="search-btn">🔍</button>
+        </div>
     </header>
 
     <section class="more-files">
         <h2>More Files</h2>
         <div class="vertical-scroll" id="more-files-slider">
             {% for v in videos %}
-            <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="/thumbnails/{{ v.custom_key }}.jpg" data-title="{{ v.title }}">
+            <div class="thumbnail" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}" data-key="{{ v.custom_key }}">
                 <div class="image-container">
-                    <img loading="lazy" src="/thumbnails/{{ v.custom_key }}.jpg" alt="{{ v.title }} thumbnail">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }}">
                 </div>
                 <div class="title">{{ v.title }}</div>
-            </a>
+            </div>
             {% endfor %}
         </div>
     </section>
 
     <div id="detail-page">
         <div id="detail-content">
-            <img id="detail-thumb" src="" alt="Detail thumbnail">
+            <img id="detail-thumb" src="" alt="">
             <h2 id="detail-title"></h2>
             <button class="btn" id="get-file">Get File</button>
             <div id="timer"></div>
@@ -237,25 +142,25 @@
 
     <script>
         const BOT_USERNAME = '{{ bot_username }}';
+
         // Collect video data
         const videos = Array.from(document.querySelectorAll('.thumbnail')).map(item => ({
             thumb: item.getAttribute('data-thumb'),
             title: item.getAttribute('data-title'),
-            key: item.getAttribute('href').split('/file/')[1]
+            key: item.getAttribute('data-key')
         }));
 
         // Thumbnail Click → Detail Overlay
         document.body.addEventListener('click', e => {
             const item = e.target.closest('.thumbnail');
             if (!item) return;
-            e.preventDefault();
             const thumb = item.getAttribute('data-thumb');
             const title = item.getAttribute('data-title');
-            const key = item.getAttribute('href').split('/file/')[1];
+            const key = item.getAttribute('data-key');
             document.getElementById('detail-thumb').src = thumb;
             document.getElementById('detail-title').textContent = title;
             document.getElementById('get-file').onclick = () => {
-                window.open(`/file/${key}`, '_blank');
+                window.location = `/file/${key}`;
             };
             document.getElementById('detail-page').classList.add('open');
             if (window._shareustag) {
@@ -264,10 +169,12 @@
                 });
             }
         });
+
         // Close Detail Overlay
         document.getElementById('close-detail').onclick = () => {
             document.getElementById('detail-page').classList.remove('open');
         };
+
         // Search Functionality
         document.querySelector('.search-btn').onclick = () => {
             document.getElementById('search-overlay').classList.add('open');
@@ -284,14 +191,14 @@
             const resultsContainer = document.getElementById('search-results');
             resultsContainer.innerHTML = '';
             results.forEach(v => {
-                const thumbnail = document.createElement('a');
+                const thumbnail = document.createElement('div');
                 thumbnail.className = 'thumbnail';
-                thumbnail.href = `/file/${v.key}`;
-                thumbnail.setAttribute('data-thumb', `/thumbnails/${v.key}.jpg`);
+                thumbnail.setAttribute('data-thumb', v.thumb);
                 thumbnail.setAttribute('data-title', v.title);
+                thumbnail.setAttribute('data-key', v.key);
                 thumbnail.innerHTML = `
                     <div class="image-container">
-                        <img loading="lazy" src="/thumbnails/${v.key}.jpg" alt="${v.title} thumbnail">
+                        <img src="${v.thumb}" alt="${v.title}">
                     </div>
                     <div class="title">${v.title}</div>
                 `;
