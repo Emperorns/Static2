@@ -1,3 +1,4 @@
+# app.py
 import os
 import pathlib
 import asyncio
@@ -16,11 +17,11 @@ MONGODB_URI      = os.getenv('MONGODB_URI')
 DB_NAME          = os.getenv('DB_NAME')
 ADMIN_ID         = int(os.getenv('ADMIN_ID'))
 CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
-UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')        # e.g. '@updates_channel'
-CAPTCHA_URL      = os.getenv('CAPTCHA_URL')            # Link to captcha verification endpoint
-H_URL            = os.getenv('H_URL') 
-TUTORIAL_URL     = os.getenv('TUTORIAL_URL')# Tutorial on solving captcha
-LOG_CHANNEL      = os.getenv('LOG_CHANNEL')            # Chat ID or @username for logging verifications
+UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')
+CAPTCHA_URL      = os.getenv('CAPTCHA_URL')
+H_URL            = os.getenv('H_URL')
+TUTORIAL_URL     = os.getenv('TUTORIAL_URL')
+LOG_CHANNEL      = os.getenv('LOG_CHANNEL')
 BOT_USERNAME     = os.getenv('BOT_USERNAME')
 PUBLIC_URL       = os.getenv('PUBLIC_URL')
 PORT             = int(os.getenv('PORT', 5000))
@@ -28,7 +29,7 @@ VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
 
 # Flask app
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -72,33 +73,31 @@ async def delete_message_job(context):
     try:
         await context.bot.delete_message(chat_id=chat_id, message_id=msg_id)
     except Exception:
-        pass  # message might already be deleted
+        pass
 
 async def require_access(update: Update, context):
     user_id = update.effective_user.id
-    # 1. Ensure user is in updates channel
     if not await check_membership(context.bot, user_id):
         join_button = InlineKeyboardButton(
             text="Join Updates Channel", url=f"https://t.me/{UPDATES_CHANNEL.strip('@')}"
         )
         markup = InlineKeyboardMarkup([[join_button]])
         await update.message.reply_text(
-            "🚨 You must join our updates channel to use this bot .After joined send /start command again. ", reply_markup=markup
+            "🚨 You must join our updates channel to use this bot. After joined send /start again.",
+            reply_markup=markup
         )
         return False
-    # 2. Ensure user has passed captcha within last 2 hours
     if not await is_verified(user_id):
         verify_btn = InlineKeyboardButton(text="Get Free Token", url=CAPTCHA_URL)
         tutorial_btn = InlineKeyboardButton(text="How to open✅", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[verify_btn], [tutorial_btn]])
         await update.message.reply_text(
-            "🛡️ CLICK ON GET FREE TOKEN BUTTON, ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ғʀᴇᴇ ᴛᴏᴋᴇɴ, ᴀғᴛᴇʀ ᴛʜᴀᴛ ʏᴏᴜ ᴀʀᴇ ᴀʙʟᴇ ᴛᴏ ᴜsᴇ ᴛʜɪs ʙᴏᴛ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴘʀᴏʙʟᴇᴍ ᴏʀ ᴀᴅs. ᴡᴇ ᴛᴏᴏ ᴅᴏɴ'ᴛ ᴡᴀɴᴛ ɪʀʀɪᴛᴀᴛᴇᴅ ᴀᴅs ɪɴ ᴏᴜʀ sᴇʀᴠɪᴄᴇ ʙᴜᴛ ɪᴛ ɪs ɴᴇᴄᴇssᴀʀʏ ғᴏʀ ᴘᴀʏɪɴɢ ʜɪɢʜ sᴇʀᴠᴇʀ ᴄᴏsᴛs, ᴏɴᴄᴇ ʏᴏᴜ ᴇᴀʀɴᴇᴅ ᴛᴏᴋᴇɴ ʏᴏᴜ ᴡɪʟʟ ʜᴀᴠᴇ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴇss ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ғᴜʀᴛʜᴇʀ ᴀᴅs👍", 
+            "🛡️ CLICK ON GET FREE TOKEN BUTTON to get your free token…", 
             reply_markup=markup
         )
         return False
     return True
 
-# Handler for admin uploads (unchanged)
 async def handle_media(update: Update, context):
     user = update.effective_user
     if not user or user.id != ADMIN_ID:
@@ -132,7 +131,6 @@ async def handle_media(update: Update, context):
     })
     await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Admin {media_type} saved: {title} ({key})")
 
-# Handler for channel posts (unchanged)
 async def channel_media(update: Update, context):
     post = update.channel_post
     if not post or post.chat.id != CHANNEL_ID:
@@ -160,45 +158,40 @@ async def channel_media(update: Update, context):
     })
     await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Channel {media_type} saved: {title} ({key})")
 
-# /start handler with self-destruct scheduling
 async def start_command(update: Update, context):
     args = context.args
     user_id = update.effective_user.id
-    # Catch verification callback
     if args and args[0] == 'verified':
         users.update_one(
             {'user_id': user_id},
             {'$set': {'last_verified': datetime.utcnow()}},
             upsert=True
         )
-        # Log to channel
         await context.bot.send_message(
             chat_id=LOG_CHANNEL,
             text=f"🔐 User {user_id} verified at {datetime.utcnow().isoformat()}"
         )
-        await update.message.reply_text("✅ You Earned a Token! Now You can now use the bot without any ads for the next 2 hours.")
+        await update.message.reply_text("✅ You Earned a Token! Now you can use the bot ad-free for 2 hours.")
         return
-    # Check membership & captcha
     if not await require_access(update, context):
         return
-    # Serve media if valid key, or send welcome
     if not args:
         tutorial_btn = InlineKeyboardButton(text="CONTENT🔞", url=H_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
-        await update.message.reply_text("👋 Welcome! ᴛɪ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ ʙᴏᴛ, ᴄʟɪᴄᴋ ᴏɴ ʙᴇʟᴏᴡ ʙᴜᴛᴛᴏɴ ᴛᴏ ᴡᴀᴛᴄʜ ʏᴏᴜʀ ғᴀᴠᴏᴜʀɪᴛᴇ 𝟷𝟾+ ᴄᴏɴᴛᴇɴᴛ. or paste this link to your browser - https://stormy-briana-mrblackgod-f86ebf97.koyeb.app/", reply_markup=markup)
+        await update.message.reply_text(
+            "👋 Welcome! Click below to watch content.", reply_markup=markup
+        )
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
     if not data:
-        await update.message.reply_text("❌ Media not found.search again")
+        await update.message.reply_text("❌ Media not found. Search again.")
         return
     send_kwargs = {'caption': data.get('title', ''), 'protect_content': True}
-    # Send and schedule self-destruct
     if data['type'] == 'video':
         sent = await context.bot.send_video(update.effective_chat.id, data['file_id'], **send_kwargs)
     else:
         sent = await context.bot.send_document(update.effective_chat.id, data['file_id'], **send_kwargs)
-    # Schedule deletion in 1 hour
     context.job_queue.run_once(
         delete_message_job,
         when=SELF_DESTRUCT,
@@ -215,6 +208,19 @@ application.add_handler(CommandHandler("start", start_command))
 def index():
     vids = list(videos.find().sort('_id', -1))
     return render_template('index.html', videos=vids, bot_username=BOT_USERNAME)
+
+@app.route('/file/<key>')
+def file_page(key):
+    data = videos.find_one({'custom_key': key})
+    if not data:
+        return "File not found", 404
+    return render_template(
+        'file.html',
+        key=key,
+        thumb_url=data.get('thumbnail_url', ''),
+        title=data.get('title', 'Untitled'),
+        bot_username=BOT_USERNAME
+    )
 
 @app.route('/thumbnails/<path:fname>')
 def thumbs(fname):
