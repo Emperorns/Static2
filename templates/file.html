@@ -1,0 +1,51 @@
+<!-- templates/file.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title }}</title>
+  <style>
+    body { background: #0f171e; color: #fff; font-family: sans-serif; text-align:center; padding:2rem; }
+    img { max-width:100%; border-radius:6px; }
+    .btn { margin-top:1rem; padding:.5rem 1rem; border:none; background:#00a8e1; color:#fff; border-radius:6px; cursor:pointer; font-size:.9rem; }
+    #timer { margin-top:.5rem; font-size:.9rem; }
+    .ad-slot { margin:2rem auto; width:320px; height:100px; background:#333; display:flex; align-items:center; justify-content:center; }
+  </style>
+</head>
+<body>
+  <h1>{{ title }}</h1>
+  <img src="{{ thumb_url }}" alt="{{ title }}">
+  <div id="timer">Please wait 5s…</div>
+  <button class="btn" id="open-link" style="display:none;">
+    Open in Telegram
+  </button>
+
+  <!-- YOUR AD HERE -->
+  <div class="ad-slot">
+    <!-- Insert your ad markup or script -->
+    Ad space
+  </div>
+
+  <script>
+    const BOT = '{{ bot_username }}';
+    let seconds = 5;
+    const timerEl = document.getElementById('timer');
+    const btn = document.getElementById('open-link');
+
+    const interval = setInterval(() => {
+      seconds--;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        timerEl.textContent = '';
+        btn.style.display = 'inline-block';
+        btn.onclick = () => {
+          window.open(`https://t.me/${BOT}?start={{ key }}`, '_blank');
+        };
+      } else {
+        timerEl.textContent = `Please wait ${seconds}s…`;
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
