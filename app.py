@@ -135,7 +135,7 @@ def register_handlers():
         uid = update.effective_user.id
         if args and args[0] == 'verified':
             users.update_one({'user_id': uid}, {'$set': {'last_verified': datetime.utcnow()}}, upsert=True)
-            await context.bot.send_message(LOG_CHANNEL, f0
+            await context.bot.send_message(LOG_CHANNEL, f"🔐 User {uid} verified")
             await update.message.reply_text("✅ Verified for 2 hours")
             return
         if not await require_access(update, context):
