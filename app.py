@@ -1,7 +1,6 @@
 import os
 import io
 import pathlib
-import asyncio
 from threading import Thread
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, send_file
@@ -39,19 +38,11 @@ users = db.users
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
 pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
-# Initialize Telegram bots
+# Initialize Telegram bot
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 sync_bot = Bot(token=BOT_TOKEN)
 
 # Async utilities
-def get_event_loop():
-    try:
-        return asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop
-
 async def download_thumbnail(bot, thumb, key):
     path = os.path.join(THUMB_DIR, f"{key}.jpg")
     tg_file = await bot.get_file(thumb.file_id)
@@ -74,13 +65,13 @@ async def is_verified(user_id):
 async def require_access(update: Update, context):
     uid = update.effective_user.id
     if not await check_membership(context.bot, uid):
-        btn = InlineKeyboardButton("Join Updates Channel", url=f"https://t.me/{UPDATES_CHANNEL.strip('@')}" )
+        btn = InlineKeyboardButton("Join Updates Channel", url=f"https://t.me/{UPDATES_CHANNEL.strip('@')}")
         await update.message.reply_text("🚨 Please join the updates channel.", reply_markup=InlineKeyboardMarkup([[btn]]))
         return False
     if not await is_verified(uid):
         btn1 = InlineKeyboardButton("Verify Human", url=CAPTCHA_URL)
         btn2 = InlineKeyboardButton("How to Solve Captcha", url=TUTORIAL_URL)
-        await update.message.reply_text("🛡️ Please verify human to proceed.", reply_markup=InlineKeyboardMarkup([[btn1],[btn2]]))
+        await update.message.reply_text("🛡️ Please verify human to proceed.", reply_markup=InlineKeyboardMarkup([[btn1], [btn2]]))
         return False
     return True
 
@@ -90,8 +81,6 @@ async def delete_message_job(context):
         await context.bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
     except:
         pass
-
-# Handlers registration
 
 def register_handlers():
     async def handle_media(update: Update, context):
@@ -161,7 +150,7 @@ def register_handlers():
         if not rec:
             await update.message.reply_text("❌ Media not found.")
             return
-        send_fn = context.bot.send_video if rec['type']=='video' else context.bot.send_document
+        send_fn = context.bot.send_video if rec['type'] == 'video' else context.bot.send_document
         sent = await send_fn(update.effective_chat.id, rec['file_id'], caption=rec['title'], protect_content=True)
         context.job_queue.run_once(
             delete_message_job,
@@ -172,8 +161,6 @@ def register_handlers():
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
     application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document.ALL), channel_media))
     application.add_handler(CommandHandler('start', start_command))
-
-# Routes registration
 
 def register_routes():
     @app.route('/')
@@ -186,7 +173,7 @@ def register_routes():
         rec = videos.find_one({'custom_key': key})
         if not rec:
             return "File not found", 404
-        return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url',''), title=rec.get('title','Untitled'), bot_username=BOT_USERNAME)
+        return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url', ''), title=rec.get('title', 'Untitled'), bot_username=BOT_USERNAME)
 
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
@@ -201,15 +188,17 @@ def register_routes():
 
     @app.route('/api/videos')
     def api_videos():
-        return jsonify(list(videos.find({}, {'_id':0}).sort('_id',-1)))
+        return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
 
-# Main entrypoint
+# Run Flask in background and Telegram bot in foreground
+def run_flask():
+    app.run(host='0.0.0.0', port=PORT)
 
 if __name__ == '__main__':
     register_handlers()
     register_routes()
-    loop = get_event_loop()
-    loop.run_until_complete(application.initialize())
-    Thread(target=lambda: loop.run_until_complete(application.start()), daemon=True).start()
-    loop.run_until_complete(application.updater.start_polling())
-    app.run(host='0.0.0.0', port=PORT)
+
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+
+    application.run_polling()
