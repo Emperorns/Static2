@@ -1,12 +1,17 @@
 import os
 import io
+from threading import Thread
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, send_file, make_response
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
-from threading import Thread
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -42,7 +47,8 @@ async def check_membership(bot, user_id):
     try:
         m = await bot.get_chat_member(UPDATES_CHANNEL, user_id)
         return m.status not in ['left', 'kicked']
-    except:
+    except Exception as e:
+        logger.error(f"Error checking membership for user {user_id}: {e}")
         return False
 
 async def is_verified(user_id):
@@ -68,8 +74,8 @@ async def delete_message_job(context):
     data = context.job.data
     try:
         await context.bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"Error deleting message: {e}")
 
 def register_handlers():
     async def handle_media(update: Update, context):
@@ -129,7 +135,7 @@ def register_handlers():
         uid = update.effective_user.id
         if args and args[0] == 'verified':
             users.update_one({'user_id': uid}, {'$set': {'last_verified': datetime.utcnow()}}, upsert=True)
-            await context.bot.send_message(LOG_CHANNEL, f"🔐 User {uid} verified")
+            await context.bot.send_message(LOG_CHANNEL, f0
             await update.message.reply_text("✅ Verified for 2 hours")
             return
         if not await require_access(update, context):
@@ -170,22 +176,31 @@ def register_routes():
 
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
+        logger.info(f"Requested thumbnail for key: {key}")
         rec = videos.find_one({'custom_key': key})
-        if not rec or 'thumbnail_file_id' not in rec or not rec['thumbnail_file_id']:
-            return "", 404
+        if not rec:
+            logger.error(f"No record found for key: {key}")
+            return "No video record found", 404
+        if 'thumbnail_file_id' not in rec or not rec['thumbnail_file_id']:
+            logger.error(f"No thumbnail_file_id for key: {key}")
+            return "Thumbnail file ID missing", 404
+        
         try:
+            logger.info(f"Fetching thumbnail with file_id: {rec['thumbnail_file_id']}")
             tf = sync_bot.get_file(rec['thumbnail_file_id'])
             buf = io.BytesIO()
             tf.download(out=buf)
             buf.seek(0)
+            
             response = make_response(send_file(buf, mimetype='image/jpeg'))
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
+            logger.info(f"Successfully served thumbnail for key: {key}")
             return response
         except Exception as e:
-            print(f"Error serving thumbnail: {e}")
-            return "", 500
+            logger.error(f"Error serving thumbnail for key {key}: {str(e)}")
+            return f"Error serving thumbnail: {str(e)}", 500
 
     @app.route('/api/videos')
     def api_videos():
