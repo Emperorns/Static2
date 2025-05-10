@@ -1,13 +1,12 @@
-# app.py
 import os
 import pathlib
 import asyncio
 from threading import Thread
 from datetime import datetime, timedelta
-from flask import Flask, render_template, send_from_directory, jsonify, make_response
+from flask import Flask, render_template, send_from_directory, jsonify, make_response, send_file
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 
 # Load environment variables
@@ -19,7 +18,6 @@ ADMIN_ID         = int(os.getenv('ADMIN_ID'))
 CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
 UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')
 CAPTCHA_URL      = os.getenv('CAPTCHA_URL')
-H_URL            = os.getenv('H_URL')
 TUTORIAL_URL     = os.getenv('TUTORIAL_URL')
 LOG_CHANNEL      = os.getenv('LOG_CHANNEL')
 BOT_USERNAME     = os.getenv('BOT_USERNAME')
@@ -29,7 +27,7 @@ VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
 
 # Flask app
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -41,14 +39,15 @@ users = db.users    # store user verification timestamps
 THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
 pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
 
-# Initialize Telegram bot
+# Initialize Telegram bot (async & sync)
 application = ApplicationBuilder().token(BOT_TOKEN).build()
+sync_bot = Bot(token=BOT_TOKEN)
 
 async def download_thumbnail(bot, thumb, key):
     thumb_path = os.path.join(THUMB_DIR, f"{key}.jpg")
     file = await bot.get_file(thumb.file_id)
     await file.download_to_drive(thumb_path)
-    return f"{PUBLIC_URL}/thumbnails/{key}.jpg"
+    return thumb_path
 
 async def check_membership(bot, user_id):
     try:
@@ -83,21 +82,21 @@ async def require_access(update: Update, context):
         )
         markup = InlineKeyboardMarkup([[join_button]])
         await update.message.reply_text(
-            "🚨 You must join our updates channel to use this bot. After joined send /start again.",
-            reply_markup=markup
+            "🚨 You must join our updates channel to use this bot.", reply_markup=markup
         )
         return False
     if not await is_verified(user_id):
-        verify_btn = InlineKeyboardButton(text="Get Free Token", url=CAPTCHA_URL)
-        tutorial_btn = InlineKeyboardButton(text="How to open✅", url=TUTORIAL_URL)
+        verify_btn = InlineKeyboardButton(text="Verify Human", url=CAPTCHA_URL)
+        tutorial_btn = InlineKeyboardButton(text="How to Solve Captcha", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[verify_btn], [tutorial_btn]])
         await update.message.reply_text(
-            "🛡️ CLICK ON GET FREE TOKEN BUTTON to get your free token…", 
+            "🛡️ Please verify you are human before using the bot (valid for 2 hours).", 
             reply_markup=markup
         )
         return False
     return True
 
+# Handler for admin uploads
 async def handle_media(update: Update, context):
     user = update.effective_user
     if not user or user.id != ADMIN_ID:
@@ -113,7 +112,8 @@ async def handle_media(update: Update, context):
         thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
         if thumb_attr:
             photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-            thumb_url = await download_thumbnail(context.bot, photo, key)
+            path = await download_thumbnail(context.bot, photo, key)
+            thumb_url = f"{PUBLIC_URL}/thumbnails/{key}.jpg"
     sent = await context.bot.forward_message(
         chat_id=CHANNEL_ID,
         from_chat_id=msg.chat.id,
@@ -131,6 +131,7 @@ async def handle_media(update: Update, context):
     })
     await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Admin {media_type} saved: {title} ({key})")
 
+# Handler for channel posts
 async def channel_media(update: Update, context):
     post = update.channel_post
     if not post or post.chat.id != CHANNEL_ID:
@@ -139,25 +140,22 @@ async def channel_media(update: Update, context):
     if not media:
         return
     key = f"file_{media.file_unique_id}"
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"🔄 Processing channel media {key}...")
     thumb_url = ''
     if post.video:
         thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
         if thumb_attr:
             photo = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-            thumb_url = await download_thumbnail(context.bot, photo, key)
-    file_id = media.file_id
-    media_type = 'video' if post.video else 'document'
-    title = post.caption or (getattr(media, 'file_name', '') if media else 'Untitled')
+            path = await download_thumbnail(context.bot, photo, key)
+            thumb_url = f"{PUBLIC_URL}/thumbnails/{key}.jpg"
     videos.insert_one({
-        'file_id': file_id,
+        'file_id': media.file_id,
         'custom_key': key,
-        'title': title,
+        'title': post.caption or 'Untitled',
         'thumbnail_url': thumb_url,
-        'type': media_type
+        'type': 'video' if post.video else 'document'
     })
-    await context.bot.send_message(chat_id=ADMIN_ID, text=f"✅ Channel {media_type} saved: {title} ({key})")
 
+# /start handler
 async def start_command(update: Update, context):
     args = context.args
     user_id = update.effective_user.id
@@ -171,21 +169,19 @@ async def start_command(update: Update, context):
             chat_id=LOG_CHANNEL,
             text=f"🔐 User {user_id} verified at {datetime.utcnow().isoformat()}"
         )
-        await update.message.reply_text("✅ You Earned a Token! Now you can use the bot ad-free for 2 hours.")
+        await update.message.reply_text("✅ Verification successful! You can now use the bot for the next 2 hours.")
         return
     if not await require_access(update, context):
         return
     if not args:
-        tutorial_btn = InlineKeyboardButton(text="CONTENT🔞", url=H_URL)
+        tutorial_btn = InlineKeyboardButton(text="How to Use This Bot", url=TUTORIAL_URL)
         markup = InlineKeyboardMarkup([[tutorial_btn]])
-        await update.message.reply_text(
-            "👋 Welcome! Click below to watch content.", reply_markup=markup
-        )
+        await update.message.reply_text("👋 Welcome! Use a valid deep link to access a file.", reply_markup=markup)
         return
     key = args[0]
     data = videos.find_one({'custom_key': key})
     if not data:
-        await update.message.reply_text("❌ Media not found. Search again.")
+        await update.message.reply_text("❌ Media not found.")
         return
     send_kwargs = {'caption': data.get('title', ''), 'protect_content': True}
     if data['type'] == 'video':
@@ -222,11 +218,25 @@ def file_page(key):
         bot_username=BOT_USERNAME
     )
 
-@app.route('/thumbnails/<path:fname>')
-def thumbs(fname):
-    resp = make_response(send_from_directory(THUMB_DIR, fname))
-    resp.headers['Cache-Control'] = 'public, max-age=31536000'
-    return resp
+# Dynamic thumbnail fetch route
+@app.route('/thumbnails/<key>.jpg')
+def serve_thumbnail(key):
+    thumb_path = os.path.join(THUMB_DIR, f"{key}.jpg")
+    if not os.path.isfile(thumb_path):
+        # Fetch thumbnail from Telegram if not present
+        record = videos.find_one({'custom_key': key})
+        if record and record.get('thumbnail_url') is None:
+            # Attempt to download using file_id
+            file_id = record.get('file_id')
+            if file_id:
+                tg_file = sync_bot.get_file(file_id)
+                tg_file.download(custom_path=thumb_path)
+        # If still not found, return 404
+        if not os.path.isfile(thumb_path):
+            return "", 404
+    response = make_response(send_file(thumb_path))
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
 
 @app.route('/api/videos')
 def api_videos():
