@@ -1,13 +1,12 @@
 import os
 import io
-import pathlib
-from threading import Thread
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, send_file
+from flask import Flask, render_template, jsonify, send_file, make_response
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
+from threading import Thread
 
 # Load environment variables
 load_dotenv()
@@ -34,21 +33,11 @@ db = client[DB_NAME]
 videos = db.videos
 users = db.users
 
-# Ensure thumbnails directory exists
-THUMB_DIR = os.path.join(os.getcwd(), 'thumbnails')
-pathlib.Path(THUMB_DIR).mkdir(parents=True, exist_ok=True)
-
 # Initialize Telegram bot
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 sync_bot = Bot(token=BOT_TOKEN)
 
 # Async utilities
-async def download_thumbnail(bot, thumb, key):
-    path = os.path.join(THUMB_DIR, f"{key}.jpg")
-    tg_file = await bot.get_file(thumb.file_id)
-    await tg_file.download_to_drive(path)
-    return path
-
 async def check_membership(bot, user_id):
     try:
         m = await bot.get_chat_member(UPDATES_CHANNEL, user_id)
@@ -92,12 +81,13 @@ def register_handlers():
         if not media:
             return
         key = f"file_{media.file_unique_id}"
+        thumb_file_id = None
         thumb_url = ''
         if msg.video:
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                await download_thumbnail(context.bot, thumb, key)
+                thumb_file_id = thumb.file_id
                 thumb_url = f"/thumbnails/{key}.jpg"
         sent = await context.bot.forward_message(CHANNEL_ID, msg.chat.id, msg.message_id)
         fid = sent.video.file_id if sent.video else sent.document.file_id
@@ -106,6 +96,7 @@ def register_handlers():
             'custom_key': key,
             'title': msg.caption or 'Untitled',
             'thumbnail_url': thumb_url,
+            'thumbnail_file_id': thumb_file_id,
             'type': 'video' if sent.video else 'document'
         })
         await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
@@ -116,18 +107,20 @@ def register_handlers():
             return
         media = post.video or post.document
         key = f"file_{media.file_unique_id}"
+        thumb_file_id = None
         thumb_url = ''
         if post.video:
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                await download_thumbnail(context.bot, thumb, key)
+                thumb_file_id = thumb.file_id
                 thumb_url = f"/thumbnails/{key}.jpg"
         videos.insert_one({
             'file_id': media.file_id,
             'custom_key': key,
             'title': post.caption or 'Untitled',
             'thumbnail_url': thumb_url,
+            'thumbnail_file_id': thumb_file_id,
             'type': 'video' if post.video else 'document'
         })
 
@@ -178,13 +171,21 @@ def register_routes():
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
         rec = videos.find_one({'custom_key': key})
-        if not rec or 'file_id' not in rec:
+        if not rec or 'thumbnail_file_id' not in rec or not rec['thumbnail_file_id']:
             return "", 404
-        tf = sync_bot.get_file(rec['file_id'])
-        buf = io.BytesIO()
-        tf.download(out=buf)
-        buf.seek(0)
-        return send_file(buf, mimetype='image/jpeg', cache_timeout=0)
+        try:
+            tf = sync_bot.get_file(rec['thumbnail_file_id'])
+            buf = io.BytesIO()
+            tf.download(out=buf)
+            buf.seek(0)
+            response = make_response(send_file(buf, mimetype='image/jpeg'))
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
+        except Exception as e:
+            print(f"Error serving thumbnail: {e}")
+            return "", 500
 
     @app.route('/api/videos')
     def api_videos():
