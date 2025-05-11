@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import logging
+import asyncio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -187,9 +188,13 @@ def register_routes():
         
         try:
             logger.info(f"Fetching thumbnail with file_id: {rec['thumbnail_file_id']}")
-            tf = sync_bot.get_file(rec['thumbnail_file_id'])
+            # Run async Telegram API call in Flask's synchronous route
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            file = loop.run_until_complete(sync_bot.get_file(rec['thumbnail_file_id']))
             buf = io.BytesIO()
-            tf.download(out=buf)
+            loop.run_until_complete(file.download_to_memory(out=buf))
+            loop.close()
             buf.seek(0)
             
             response = make_response(send_file(buf, mimetype='image/jpeg'))
