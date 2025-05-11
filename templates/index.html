@@ -215,7 +215,7 @@
             {% for v in videos %}
             <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
                 <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }} thumbnail">
+                    <img src="{{ v.thumbnail_url }}?t={{ 'now'|strftime('%s') }}" alt="{{ v.title }} thumbnail" onerror="this.src='/static/fallback.jpg';">
                 </div>
                 <div class="title">{{ v.title }}</div>
             </a>
@@ -254,7 +254,7 @@
             const item = e.target.closest('.thumbnail');
             if (!item) return;
             e.preventDefault();
-            const thumb = item.getAttribute('data-thumb');
+            const thumb = item.getAttribute('data-thumb') + '?t=' + new Date().getTime();
             const title = item.getAttribute('data-title');
             const key = item.getAttribute('href').split('/file/')[1];
             document.getElementById('detail-thumb').src = thumb;
@@ -296,7 +296,7 @@
                 thumbnail.setAttribute('data-title', v.title);
                 thumbnail.innerHTML = `
                     <div class="image-container">
-                        <img src="${v.thumb}" alt="${v.title} thumbnail">
+                        <img src="${v.thumb}?t=${new Date().getTime()}" alt="${v.title} thumbnail" onerror="this.src='/static/fallback.jpg';">
                     </div>
                     <div class="title">${v.title}</div>
                 `;
