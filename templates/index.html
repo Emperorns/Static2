@@ -215,7 +215,7 @@
             {% for v in videos %}
             <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
                 <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}?t={{ 'now'|strftime('%s') }}" alt="{{ v.title }} thumbnail" onerror="this.src='/static/fallback.jpg';">
+                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }} thumbnail" onerror="this.src='/static/fallback.jpg';">
                 </div>
                 <div class="title">{{ v.title }}</div>
             </a>
@@ -248,6 +248,15 @@
             title: item.getAttribute('data-title'),
             key: item.getAttribute('href').split('/file/')[1]
         }));
+
+        // Add cache-busting to all thumbnail images on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const timestamp = new Date().getTime();
+            document.querySelectorAll('.thumbnail img').forEach(img => {
+                const baseSrc = img.getAttribute('src');
+                img.src = `${baseSrc}?t=${timestamp}`;
+            });
+        });
 
         // Thumbnail Click → Detail Overlay
         document.body.addEventListener('click', e => {
