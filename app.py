@@ -9,7 +9,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import logging
 import asyncio
-import tenacity
+import pathlib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,11 +34,6 @@ SELF_DESTRUCT    = timedelta(hours=1)
 # Initialize Flask app
 app = Flask(__name__)
 
-# Register Jinja2 filters for cache-busting thumbnails
-app.jinja_env.filters['datetime'] = lambda x: datetime.utcnow()
-app.jinja_env.filters['timestamp'] = lambda x: int(x.timestamp() * 1000)
-logger.info("Registered Jinja2 filters: datetime, timestamp")
-
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
 db = client[DB_NAME]
@@ -48,6 +43,10 @@ users = db.users
 # Initialize Telegram bot
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 sync_bot = Bot(token=BOT_TOKEN)
+
+# Ensure thumbnails directory exists
+THUMBNAILS_DIR = os.path.join('static', 'thumbnails')
+os.makedirs(THUMBNAILS_DIR, exist_ok=True)
 
 # Async utilities
 async def check_membership(bot, user_id):
@@ -84,6 +83,20 @@ async def delete_message_job(context):
     except Exception as e:
         logger.error(f"Error deleting message: {e}")
 
+async def save_thumbnail(file_id, key):
+    try:
+        file = await sync_bot.get_file(file_id)
+        buf = io.BytesIO()
+        await file.download_to_memory(out=buf)
+        buf.seek(0)
+        thumbnail_path = os.path.join(THUMBNAILS_DIR, f"{key}.jpg")
+        with open(thumbnail_path, 'wb') as f:
+            f.write(buf.read())
+        return f"static/thumbnails/{key}.jpg"
+    except Exception as e:
+        logger.error(f"Failed to save thumbnail for key {key}: {e}")
+        return None
+
 def register_handlers():
     async def handle_media(update: Update, context):
         user = update.effective_user
@@ -94,14 +107,13 @@ def register_handlers():
         if not media:
             return
         key = f"file_{media.file_unique_id}"
-        thumb_file_id = None
-        thumb_url = ''
+        thumbnail_path = None
+        thumb_url = f"/thumbnails/{key}.jpg"
         if msg.video:
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumb_file_id = thumb.file_id
-                thumb_url = f"/thumbnails/{key}.jpg"
+                thumbnail_path = await save_thumbnail(thumb.file_id, key)
         sent = await context.bot.forward_message(CHANNEL_ID, msg.chat.id, msg.message_id)
         fid = sent.video.file_id if sent.video else sent.document.file_id
         videos.insert_one({
@@ -109,7 +121,7 @@ def register_handlers():
             'custom_key': key,
             'title': msg.caption or 'Untitled',
             'thumbnail_url': thumb_url,
-            'thumbnail_file_id': thumb_file_id,
+            'thumbnail_path': thumbnail_path,
             'type': 'video' if sent.video else 'document'
         })
         await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
@@ -120,20 +132,19 @@ def register_handlers():
             return
         media = post.video or post.document
         key = f"file_{media.file_unique_id}"
-        thumb_file_id = None
-        thumb_url = ''
+        thumbnail_path = None
+        thumb_url = f"/thumbnails/{key}.jpg"
         if post.video:
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumb_file_id = thumb.file_id
-                thumb_url = f"/thumbnails/{key}.jpg"
+                thumbnail_path = await save_thumbnail(thumb.file_id, key)
         videos.insert_one({
             'file_id': media.file_id,
             'custom_key': key,
             'title': post.caption or 'Untitled',
             'thumbnail_url': thumb_url,
-            'thumbnail_file_id': thumb_file_id,
+            'thumbnail_path': thumbnail_path,
             'type': 'video' if post.video else 'document'
         })
 
@@ -189,48 +200,45 @@ def register_routes():
     def favicon():
         return send_from_directory('static', 'favicon.ico', mimetype='image/x-icon')
 
-    @tenacity.retry(wait=tenacity.wait_fixed(1), stop=tenacity.stop_after_attempt(3), reraise=True)
-    async def fetch_thumbnail(file_id):
-        try:
-            file = await sync_bot.get_file(file_id)
-            buf = io.BytesIO()
-            await file.download_to_memory(out=buf)
-            buf.seek(0)
-            return buf
-        except Exception as e:
-            logger.error(f"Failed to fetch thumbnail for file_id {file_id}: {e}")
-            raise
-
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
         logger.info(f"Requested thumbnail for key: {key}")
         rec = videos.find_one({'custom_key': key})
-        if not rec:
-            logger.error(f"No record found for key: {key}")
+        if not rec or not rec.get('thumbnail_path'):
+            logger.error(f"No thumbnail for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
-        if 'thumbnail_file_id' not in rec or not rec['thumbnail_file_id']:
-            logger.error(f"No thumbnail_file_id for key: {key}")
+        try:
+            response = make_response(send_from_directory('static/thumbnails', f"{key}.jpg"))
+            response.headers['Cache-Control'] = 'public, max-age=31536000'
+            logger.info(f"Successfully served thumbnail for key: {key}")
+            return response
+        except FileNotFoundError:
+            logger.error(f"Thumbnail file missing for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
+
+# Migrate existing records
+def migrate_thumbnails():
+    for rec in videos.find({'thumbnail_path': None, 'thumbnail_file_id': {'$exists': True}}):
+        key = rec['custom_key']
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            buf = loop.run_until_complete(fetch_thumbnail(rec['thumbnail_file_id']))
+            thumbnail_path = loop.run_until_complete(save_thumbnail(rec['thumbnail_file_id'], key))
             loop.close()
-            response = make_response(send_file(buf, mimetype='image/jpeg'))
-            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
-            logger.info(f"Successfully served thumbnail for key: {key}")
-            return response
+            if thumbnail_path:
+                videos.update_one({'custom_key': key}, {'$set': {'thumbnail_path': thumbnail_path}})
+                logger.info(f"Migrated thumbnail for key: {key}")
+            else:
+                logger.warning(f"Failed to migrate thumbnail for key: {key}")
         except Exception as e:
-            logger.error(f"Error serving thumbnail for key {key} after retries: {str(e)}")
-            return send_from_directory('static', 'fallback.jpg'), 200
+            logger.error(f"Error migrating thumbnail for key {key}: {e}")
 
 # Run Flask in background and Telegram bot in foreground
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
 if __name__ == '__main__':
+    migrate_thumbnails()  # Run migration on startup
     register_handlers()
     register_routes()
 
