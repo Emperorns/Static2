@@ -71,13 +71,21 @@
         }
         .thumbnail .image-container {
             width: 100%;
-            /* Allow natural height */
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
         }
         .thumbnail img {
             width: 100%;
-            height: auto;
-            object-fit: contain;
+            height: 100%;
+            object-fit: cover;
             display: block;
+            transition: opacity var(--transition);
+        }
+        .thumbnail img[loading="lazy"] {
+            opacity: 0;
+        }
+        .thumbnail img.loaded {
+            opacity: 1;
         }
         .thumbnail .title {
             font-size: 1rem;
@@ -190,7 +198,6 @@
             }
         }
     </style>
-    <!-- Load the ad script and define the slot -->
     <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js"></script>
     <script>
         window._shareustag = window._shareustag || {cmd:[]};
@@ -215,7 +222,7 @@
             {% for v in videos %}
             <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
                 <div class="image-container">
-                    <img src="{{ v.thumbnail_url }}" alt="{{ v.title }} thumbnail" onerror="this.src='/static/fallback.jpg';">
+                    <img data-src="{{ v.thumbnail_url }}?t={{ 'now'|datetime|timestamp }}" alt="{{ v.title }} thumbnail" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');">
                 </div>
                 <div class="title">{{ v.title }}</div>
             </a>
@@ -227,17 +234,17 @@
         <div id="detail-content">
             <img id="detail-thumb" src="" alt="Detail thumbnail">
             <h2 id="detail-title"></h2>
-            <button class="btn" id="get-file">Get File</button>
+            <button class="btn" id="get-file" aria-label="Get file">Get File</button>
             <div id="timer"></div>
-            <button class="btn secondary" id="close-detail">Close</button>
+            <button class="btn secondary" id="close-detail" aria-label="Close detail overlay">Close</button>
             <div id="shareus-admanager-3049258825-cevFiS93lz" class="ad-unit"></div>
         </div>
     </div>
 
     <div id="search-overlay">
-        <input type="text" id="overlay-search" placeholder="Search by title...">
+        <input type="text" id="overlay-search" placeholder="Search by title..." aria-label="Search videos">
         <div id="search-results"></div>
-        <button class="btn secondary" id="close-search">Close</button>
+        <button class="btn secondary" id="close-search" aria-label="Close search overlay">Close</button>
     </div>
 
     <script>
@@ -249,13 +256,32 @@
             key: item.getAttribute('href').split('/file/')[1]
         }));
 
-        // Add cache-busting to all thumbnail images on page load
+        // Sequential thumbnail loading
         document.addEventListener('DOMContentLoaded', () => {
-            const timestamp = new Date().getTime();
-            document.querySelectorAll('.thumbnail img').forEach(img => {
-                const baseSrc = img.getAttribute('src');
-                img.src = `${baseSrc}?t=${timestamp}`;
+            const thumbnails = document.querySelectorAll('.thumbnail img');
+            let index = 0;
+            const loadNext = () => {
+                if (index < thumbnails.length) {
+                    const img = thumbnails[index];
+                    img.src = img.getAttribute('data-src');
+                    img.onload = () => {
+                        img.classList.add('loaded');
+                        index++;
+                        loadNext();
+                    };
+                    img.onerror = () => {
+                        img.src = '/static/fallback.jpg';
+                        img.classList.add('loaded');
+                        index++;
+                        loadNext();
+                    };
+                }
+            };
+            thumbnails.forEach(img => {
+                img.setAttribute('data-src', img.getAttribute('data-src') || img.src);
+                img.src = '';
             });
+            loadNext();
         });
 
         // Thumbnail Click → Detail Overlay
@@ -278,10 +304,12 @@
                 });
             }
         });
+
         // Close Detail Overlay
         document.getElementById('close-detail').onclick = () => {
             document.getElementById('detail-page').classList.remove('open');
         };
+
         // Search Functionality
         document.querySelector('.search-btn').onclick = () => {
             document.getElementById('search-overlay').classList.add('open');
@@ -305,13 +333,35 @@
                 thumbnail.setAttribute('data-title', v.title);
                 thumbnail.innerHTML = `
                     <div class="image-container">
-                        <img src="${v.thumb}?t=${new Date().getTime()}" alt="${v.title} thumbnail" onerror="this.src='/static/fallback.jpg';">
+                        <img data-src="${v.thumb}?t=${new Date().getTime()}" alt="${v.title} thumbnail" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');">
                     </div>
                     <div class="title">${v.title}</div>
                 `;
                 resultsContainer.appendChild(thumbnail);
             });
+            // Load search result thumbnails sequentially
+            const searchThumbnails = resultsContainer.querySelectorAll('.thumbnail img');
+            let searchIndex = 0;
+            const loadNextSearch = () => {
+                if (searchIndex < searchThumbnails.length) {
+                    const img = searchThumbnails[searchIndex];
+                    img.src = img.getAttribute('data-src');
+                    img.onload = () => {
+                        img.classList.add('loaded');
+                        searchIndex++;
+                        loadNextSearch();
+                    };
+                    img.onerror = () => {
+                        img.src = '/static/fallback.jpg';
+                        img.classList.add('loaded');
+                        searchIndex++;
+                        loadNextSearch();
+                    };
+                }
+            };
+            searchThumbnails.forEach(img => img.src = '');
+            loadNextSearch();
         };
     </script>
 </body>
-</html>
+    </html>
