@@ -103,49 +103,23 @@ async def save_thumbnail(file_id, key):
         return None
 
 def register_handlers():
-    async def handle_media(update: Update, context):
-        user = update.effective_user
-        if not user or user.id != ADMIN_ID:
-            return
-        msg = update.message
-        media = msg.video or msg.document
-        if not media:
-            return
-        key = f"file_{media.file_unique_id}"
-        thumbnail_path = None
-        thumb_url = f"/thumbnails/{key}.jpg"
-        if msg.video:
-            thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
-            if thumb_attr:
-                thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumbnail_path = await save_thumbnail(thumb.file_id, key)
-        sent = await context.bot.forward_message(MOVIES_CHANNEL_ID, msg.chat.id, msg.message_id)
-        fid = sent.video.file_id if sent.video else sent.document.file_id
-        videos.insert_one({
-            'file_id': fid,
-            'custom_key': key,
-            'title': msg.caption or 'Untitled',
-            'thumbnail_url': thumb_url,
-            'thumbnail_path': thumbnail_path,
-            'type': 'video' if sent.video else 'document',
-            'category': 'movies'
-        })
-        await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
-        logger.info(f"Indexed private message file {key} for Movies")
-
     async def channel_media(update: Update, context):
         msg = update.message
-        if not msg or not msg.chat.type == 'channel':
-            logger.debug(f"Received non-channel message: {msg.chat.type if msg else 'None'}")
+        if not msg:
+            logger.debug("Received update with no message")
+            return
+        if not msg.chat.type in ['channel', 'supergroup']:
+            logger.debug(f"Received non-channel message: chat_type={msg.chat.type}")
             return
         logger.info(f"Processing channel post from chat ID {msg.chat.id}")
-        if msg.chat.id == MOVIES_CHANNEL_ID:
-            category = 'movies'
-        elif msg.chat.id == ADULT_CHANNEL_ID:
-            category = 'adult'
-        elif msg.chat.id == ANIME_CHANNEL_ID:
-            category = 'anime'
-        else:
+        # Map channel ID to category
+        channel_map = {
+            MOVIES_CHANNEL_ID: 'movies',
+            ADULT_CHANNEL_ID: 'adult',
+            ANIME_CHANNEL_ID: 'anime'
+        }
+        category = channel_map.get(msg.chat.id)
+        if not category:
             logger.warning(f"Unknown channel ID {msg.chat.id}")
             return
         media = msg.video or msg.document
@@ -153,7 +127,7 @@ def register_handlers():
             logger.debug(f"No media in channel post from {msg.chat.id}")
             return
         key = f"file_{media.file_unique_id}"
-        # Check if already indexed
+        # Prevent duplicate indexing
         if videos.find_one({'custom_key': key}):
             logger.info(f"File {key} already indexed, skipping")
             return
@@ -163,17 +137,20 @@ def register_handlers():
         if msg.video and hasattr(media, 'thumb') and media.thumb:
             thumbnail_file_id = media.thumb.file_id
             thumbnail_path = await save_thumbnail(thumbnail_file_id, key)
-        videos.insert_one({
-            'file_id': media.file_id,
-            'custom_key': key,
-            'title': msg.caption or 'Untitled',
-            'thumbnail_url': thumb_url,
-            'thumbnail_path': thumbnail_path,
-            'thumbnail_file_id': thumbnail_file_id,
-            'type': 'video' if msg.video else 'document',
-            'category': category
-        })
-        logger.info(f"Indexed channel file {key} for category {category}")
+        try:
+            videos.insert_one({
+                'file_id': media.file_id,
+                'custom_key': key,
+                'title': msg.caption or 'Untitled',
+                'thumbnail_url': thumb_url,
+                'thumbnail_path': thumbnail_path,
+                'thumbnail_file_id': thumbnail_file_id,
+                'type': 'video' if msg.video else 'document',
+                'category': category
+            })
+            logger.info(f"Successfully indexed file {key} for category {category}")
+        except Exception as e:
+            logger.error(f"Failed to index file {key} for category {category}: {e}")
 
     async def start_command(update: Update, context):
         args = context.args
@@ -202,7 +179,6 @@ def register_handlers():
             data={'chat_id': update.effective_chat.id, 'message_id': sent.message_id}
         )
 
-    application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
     application.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.VIDEO | filters.Document.ALL), channel_media))
     application.add_handler(CommandHandler('start', start_command))
 
@@ -272,6 +248,8 @@ def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
 async def main():
+    # Log channel IDs for verification
+    logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID}, Adult={ADULT_CHANNEL_ID}, Anime={ANIME_CHANNEL_ID}")
     await migrate_thumbnails()
     register_handlers()
     register_routes()
