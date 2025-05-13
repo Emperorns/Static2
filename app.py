@@ -9,6 +9,10 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import logging
 import asyncio
+import nest_asyncio
+
+# Apply nest_asyncio to allow nested event loops
+nest_asyncio.apply()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -234,7 +238,7 @@ def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
 async def main():
-    await migrate_thumbnails()  # Run migration before polling
+    await migrate_thumbnails()
     register_handlers()
     register_routes()
     flask_thread = Thread(target=run_flask, daemon=True)
@@ -242,4 +246,5 @@ async def main():
     await application.run_polling()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
