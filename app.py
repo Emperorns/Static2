@@ -7,9 +7,11 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
+from telegram.error import Conflict
 import logging
 import asyncio
 import nest_asyncio
+import time
 
 # Apply nest_asyncio for Koyeb compatibility
 nest_asyncio.apply()
@@ -243,19 +245,35 @@ async def migrate_thumbnails():
         except Exception as e:
             logger.error(f"Error migrating thumbnail for key {key}: {e}")
 
-# Run Flask and Telegram bot
+# Run Flask and Telegram bot with retry logic for polling
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
+async def run_polling_with_retry():
+    max_retries = 5
+    retry_delay = 10  # seconds
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Starting polling attempt {attempt + 1}/{max_retries}")
+            await application.run_polling()
+            break
+        except Conflict as e:
+            logger.error(f"Polling conflict detected: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Max retries reached. Please ensure only one bot instance is running.")
+                raise
+
 async def main():
-    # Log channel IDs for verification
     logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID}, Adult={ADULT_CHANNEL_ID}, Anime={ANIME_CHANNEL_ID}")
     await migrate_thumbnails()
     register_handlers()
     register_routes()
     flask_thread = Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    await application.run_polling()
+    await run_polling_with_retry()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
