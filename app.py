@@ -7,11 +7,12 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
-from telegram.error import Conflict
+from telegram.error import Conflict, InvalidToken, NetworkError
 import logging
 import asyncio
 import nest_asyncio
 import time
+import httpx
 
 # Apply nest_asyncio for Koyeb compatibility
 nest_asyncio.apply()
@@ -47,8 +48,8 @@ db = client[DB_NAME]
 videos = db.videos
 users = db.users
 
-# Initialize Telegram bot
-application = ApplicationBuilder().token(BOT_TOKEN).build()
+# Initialize Telegram bot with increased timeout
+application = ApplicationBuilder().token(BOT_TOKEN).http_client(httpx.AsyncClient(timeout=30.0)).build()
 sync_bot = Bot(token=BOT_TOKEN)
 
 # Ensure thumbnails directory exists
@@ -103,6 +104,18 @@ async def save_thumbnail(file_id, key):
     except Exception as e:
         logger.error(f"Failed to save thumbnail for key {key}: {e}")
         return None
+
+async def validate_token(bot):
+    try:
+        await bot.get_me()
+        logger.info("Bot token validated successfully")
+        return True
+    except InvalidToken as e:
+        logger.error(f"Invalid bot token: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Error validating bot token: {e}")
+        return False
 
 def register_handlers():
     async def channel_media(update: Update, context):
@@ -232,7 +245,10 @@ def register_routes():
             return send_from_directory('static', 'fallback.jpg'), 200
 
 # Migrate thumbnails asynchronously
-async def migrate_thumbnails():
+async def migrate_thumbnails(bot):
+    if not await validate_token(bot):
+        logger.warning("Skipping thumbnail migration due to invalid token")
+        return
     for rec in videos.find({'thumbnail_path': None, 'thumbnail_file_id': {'$exists': True}}):
         key = rec['custom_key']
         try:
@@ -250,8 +266,12 @@ def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
 async def run_polling_with_retry():
+    if not await validate_token(sync_bot):
+        logger.error("Cannot start polling: Invalid bot token")
+        raise InvalidToken("Bot token is invalid")
     max_retries = 5
     retry_delay = 10  # seconds
+    network_retries = 3
     for attempt in range(max_retries):
         try:
             logger.info(f"Starting polling attempt {attempt + 1}/{max_retries}")
@@ -265,10 +285,29 @@ async def run_polling_with_retry():
             else:
                 logger.error("Max retries reached. Please ensure only one bot instance is running.")
                 raise
+        except NetworkError as e:
+            logger.error(f"Network error during polling: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds due to network error...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Max retries reached for network errors. Check network connectivity.")
+                raise
+        except InvalidToken as e:
+            logger.error(f"Invalid token during polling: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during polling: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error("Max retries reached for unexpected errors.")
+                raise
 
 async def main():
     logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID}, Adult={ADULT_CHANNEL_ID}, Anime={ANIME_CHANNEL_ID}")
-    await migrate_thumbnails()
+    await migrate_thumbnails(sync_bot)
     register_handlers()
     register_routes()
     flask_thread = Thread(target=run_flask, daemon=True)
@@ -277,4 +316,7 @@ async def main():
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    try:
+        loop.run_until_complete(main())
+    finally:
+        loop.close()
