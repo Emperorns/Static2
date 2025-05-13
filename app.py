@@ -6,7 +6,7 @@ from flask import Flask, render_template, jsonify, send_file, make_response, sen
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ChannelPostHandler, filters
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import logging
 import asyncio
 import nest_asyncio
@@ -133,22 +133,24 @@ def register_handlers():
         await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
 
     async def channel_media(update: Update, context):
-        post = update.channel_post
-        if not post:
+        msg = update.message
+        if not msg or not msg.chat.type == 'channel':
             return
-        if post.chat.id == MOVIES_CHANNEL_ID:
+        if msg.chat.id == MOVIES_CHANNEL_ID:
             category = 'movies'
-        elif post.chat.id == ADULT_CHANNEL_ID:
+        elif msg.chat.id == ADULT_CHANNEL_ID:
             category = 'adult'
-        elif post.chat.id == ANIME_CHANNEL_ID:
+        elif msg.chat.id == ANIME_CHANNEL_ID:
             category = 'anime'
         else:
             return
-        media = post.video or post.document
+        media = msg.video or msg.document
+        if not media:
+            return
         key = f"file_{media.file_unique_id}"
         thumbnail_path = None
         thumb_url = f"/thumbnails/{key}.jpg"
-        if post.video:
+        if msg.video:
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
@@ -156,10 +158,10 @@ def register_handlers():
         videos.insert_one({
             'file_id': media.file_id,
             'custom_key': key,
-            'title': post.caption or 'Untitled',
+            'title': msg.caption or 'Untitled',
             'thumbnail_url': thumb_url,
             'thumbnail_path': thumbnail_path,
-            'type': 'video' if post.video else 'document',
+            'type': 'video' if msg.video else 'document',
             'category': category
         })
 
@@ -191,7 +193,7 @@ def register_handlers():
         )
 
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
-    application.add_handler(ChannelPostHandler(channel_media))
+    application.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.VIDEO | filters.Document.ALL), channel_media))
     application.add_handler(CommandHandler('start', start_command))
 
 def register_routes():
