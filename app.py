@@ -34,6 +34,11 @@ SELF_DESTRUCT    = timedelta(hours=1)
 # Initialize Flask app
 app = Flask(__name__)
 
+# Register Jinja2 filters for cache-busting thumbnails
+app.jinja_env.filters['datetime'] = lambda x: datetime.utcnow()
+app.jinja_env.filters['timestamp'] = lambda x: int(x.timestamp() * 1000)
+logger.info("Registered Jinja2 filters: datetime, timestamp")
+
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
 db = client[DB_NAME]
@@ -179,6 +184,10 @@ def register_routes():
     @app.route('/api/videos')
     def api_videos():
         return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
+
+    @app.route('/favicon.ico')
+    def favicon():
+        return send_from_directory('static', 'favicon.ico', mimetype='image/x-icon')
 
     @tenacity.retry(wait=tenacity.wait_fixed(1), stop=tenacity.stop_after_attempt(3), reraise=True)
     async def fetch_thumbnail(file_id):
