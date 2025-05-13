@@ -1,81 +1,130 @@
-<!-- templates/file.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  
-<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
- <script>
-     window._shareustag = window._shareustag || {cmd:[]};
-    _shareustag.cmd.push(function() {
-      var slot1 = _shareustag.defineRewardAdSlot('/shareus-admanager/3049258825/0GFGAaeMUW/Rewarded');
-    });
-  </script>
-
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{ title }}</title>
-  <style>
-    body { background: #0f171e; color: #fff; font-family: sans-serif; text-align:center; padding:2rem; }
-    img { max-width:100%; border-radius:6px; }
-    .btn { margin-top:1rem; padding:.5rem 1rem; border:none; background:#00a8e1; color:#fff; border-radius:6px; cursor:pointer; font-size:.9rem; }
-    #timer { margin-top:.5rem; font-size:.9rem; }
-    .ad-slot { margin:2rem auto; width:320px; height:100px; background:#333; display:flex; align-items:center; justify-content:center; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <style>
+        :root {
+            --bg: #0f171e;
+            --fg: #fff;
+            --accent: #00a8e1;
+            --radius: 6px;
+            --gap: 12px;
+            --transition: 0.3s;
+        }
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center;
+            padding: 2rem;
+            line-height: 1.4;
+        }
+        .thumbnail img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius);
+            object-fit: contain;
+            transition: opacity var(--transition);
+        }
+        .thumbnail img[loading="lazy"] {
+            opacity: 0;
+        }
+        .thumbnail img.loaded {
+            opacity: 1;
+        }
+        .btn {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: var(--accent);
+            color: var(--fg);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+            width: 100%;
+            max-width: 200px;
+        }
+        #timer {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            aria-live: polite;
+        }
+        .progress {
+            width: 100%;
+            max-width: 200px;
+            height: 5px;
+            background: #333;
+            margin: 0.5rem auto;
+            border-radius: var(--radius);
+        }
+        .progress-bar {
+            width: 0;
+            height: 100%;
+            background: var(--accent);
+            transition: width 30s linear;
+            border-radius: var(--radius);
+        }
+        .progress-bar.active {
+            width: 100%;
+        }
+        .ad-slot {
+            margin: 2rem auto;
+            width: 100%;
+            max-width: 320px;
+            height: 100px;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+        }
+    </style>
+    <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js"></script>
+    <script>
+        window._shareustag = window._shareustag || {cmd:[]};
+        _shareustag.cmd.push(function() {
+            _shareustag.defineRewardAdSlot('/shareus-admanager/3049258825/0GFGAaeMUW/Rewarded');
+            _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"], 'shareus-admanager-3049258825-yAuWgfpMHg');
+            _shareustag.defineSlot('/shareus-admanager/3049258825/o5nkl8FIBA/Banner2', ["Responsive"], 'shareus-admanager-3049258825-o5nkl8FIBA');
+            _shareustag.display('shareus-admanager-3049258825-yAuWgfpMHg');
+            _shareustag.display('shareus-admanager-3049258825-o5nkl8FIBA');
+        });
+    </script>
 </head>
 <body>
-  <h1>{{ title }}</h1>
-  <img src="{{ thumb_url }}" alt="{{ title }}">
-  <div id="timer">Please wait 5s…</div>
-  <button class="btn" id="open-link" style="display:none;">
-    Open in Telegram
-  </button>
+    <h1>{{ title }}</h1>
+    <div class="thumbnail">
+        <img src="{{ thumb_url }}?t={{ 'now'|datetime|timestamp }}" alt="{{ title }}" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');" onload="this.classList.add('loaded');">
+    </div>
+    <div id="timer" aria-live="polite">Please wait 30s…</div>
+    <div class="progress"><div class="progress-bar"></div></div>
+    <button class="btn" id="open-link" style="display:none;" aria-label="Open file in Telegram">Open in Telegram</button>
+    <div id="shareus-admanager-3049258825-yAuWgfpMHg" class="ad-slot"></div>
+    <div id="shareus-admanager-3049258825-o5nkl8FIBA" class="ad-slot"></div>
+    <script>
+        const BOT = '{{ bot_username }}';
+        let seconds = 30;
+        const timerEl = document.getElementById('timer');
+        const btn = document.getElementById('open-link');
+        const progressBar = document.querySelector('.progress-bar');
 
-<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
-
-<div id="shareus-admanager-3049258825-yAuWgfpMHg">
- <script>
-     window._shareustag = window._shareustag || {cmd:[]};
-    _shareustag.cmd.push(function() {
-      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"],'shareus-admanager-3049258825-yAuWgfpMHg');
-    });
-  </script>
-</div>
-
-
-  
-<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
-
-<div id="shareus-admanager-3049258825-o5nkl8FIBA">
- <script>
-     window._shareustag = window._shareustag || {cmd:[]};
-    _shareustag.cmd.push(function() {
-      var slot1 = _shareustag.defineSlot('/shareus-admanager/3049258825/o5nkl8FIBA/Banner2', ["Responsive"],'shareus-admanager-3049258825-o5nkl8FIBA');
-    });
-  </script>
-</div>
-
-
-
-  <script>
-    const BOT = '{{ bot_username }}';
-    let seconds = 30;
-    const timerEl = document.getElementById('timer');
-    const btn = document.getElementById('open-link');
-
-    const interval = setInterval(() => {
-      seconds--;
-      if (seconds <= 0) {
-        clearInterval(interval);
-        timerEl.textContent = '';
-        btn.style.display = 'inline-block';
-        btn.onclick = () => {
-          window.open(`https://t.me/${BOT}?start={{ key }}`, '_blank');
-        };
-      } else {
-        timerEl.textContent = `Please wait ${seconds}s…`;
-      }
-    }, 1000);
-  </script>
+        setTimeout(() => progressBar.classList.add('active'), 0);
+        const interval = setInterval(() => {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                timerEl.textContent = '';
+                btn.style.display = 'inline-block';
+                btn.onclick = () => {
+                    window.open(`https://t.me/${BOT}?start={{ key }}`, '_blank');
+                };
+            } else {
+                timerEl.textContent = `Please wait ${seconds}s…`;
+            }
+        }, 1000);
+    </script>
 </body>
 </html>
