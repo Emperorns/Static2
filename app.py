@@ -2,13 +2,14 @@ import os
 import io
 from threading import Thread
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, send_file, make_response
+from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import logging
 import asyncio
+import tenacity
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -175,28 +176,37 @@ def register_routes():
             return "File not found", 404
         return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url', ''), title=rec.get('title', 'Untitled'), bot_username=BOT_USERNAME)
 
+    @app.route('/api/videos')
+    def api_videos():
+        return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
+
+    @tenacity.retry(wait=tenacity.wait_fixed(1), stop=tenacity.stop_after_attempt(3), reraise=True)
+    async def fetch_thumbnail(file_id):
+        try:
+            file = await sync_bot.get_file(file_id)
+            buf = io.BytesIO()
+            await file.download_to_memory(out=buf)
+            buf.seek(0)
+            return buf
+        except Exception as e:
+            logger.error(f"Failed to fetch thumbnail for file_id {file_id}: {e}")
+            raise
+
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
         logger.info(f"Requested thumbnail for key: {key}")
         rec = videos.find_one({'custom_key': key})
         if not rec:
             logger.error(f"No record found for key: {key}")
-            return "No video record found", 404
+            return send_from_directory('static', 'fallback.jpg'), 200
         if 'thumbnail_file_id' not in rec or not rec['thumbnail_file_id']:
             logger.error(f"No thumbnail_file_id for key: {key}")
-            return "Thumbnail file ID missing", 404
-        
+            return send_from_directory('static', 'fallback.jpg'), 200
         try:
-            logger.info(f"Fetching thumbnail with file_id: {rec['thumbnail_file_id']}")
-            # Run async Telegram API call in Flask's synchronous route
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            file = loop.run_until_complete(sync_bot.get_file(rec['thumbnail_file_id']))
-            buf = io.BytesIO()
-            loop.run_until_complete(file.download_to_memory(out=buf))
+            buf = loop.run_until_complete(fetch_thumbnail(rec['thumbnail_file_id']))
             loop.close()
-            buf.seek(0)
-            
             response = make_response(send_file(buf, mimetype='image/jpeg'))
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
@@ -204,12 +214,8 @@ def register_routes():
             logger.info(f"Successfully served thumbnail for key: {key}")
             return response
         except Exception as e:
-            logger.error(f"Error serving thumbnail for key {key}: {str(e)}")
-            return f"Error serving thumbnail: {str(e)}", 500
-
-    @app.route('/api/videos')
-    def api_videos():
-        return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
+            logger.error(f"Error serving thumbnail for key {key} after retries: {str(e)}")
+            return send_from_directory('static', 'fallback.jpg'), 200
 
 # Run Flask in background and Telegram bot in foreground
 def run_flask():
