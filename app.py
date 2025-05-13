@@ -131,11 +131,14 @@ def register_handlers():
             'category': 'movies'
         })
         await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
+        logger.info(f"Indexed private message file {key} for Movies")
 
     async def channel_media(update: Update, context):
         msg = update.message
         if not msg or not msg.chat.type == 'channel':
+            logger.debug(f"Received non-channel message: {msg.chat.type if msg else 'None'}")
             return
+        logger.info(f"Processing channel post from chat ID {msg.chat.id}")
         if msg.chat.id == MOVIES_CHANNEL_ID:
             category = 'movies'
         elif msg.chat.id == ADULT_CHANNEL_ID:
@@ -143,27 +146,34 @@ def register_handlers():
         elif msg.chat.id == ANIME_CHANNEL_ID:
             category = 'anime'
         else:
+            logger.warning(f"Unknown channel ID {msg.chat.id}")
             return
         media = msg.video or msg.document
         if not media:
+            logger.debug(f"No media in channel post from {msg.chat.id}")
             return
         key = f"file_{media.file_unique_id}"
+        # Check if already indexed
+        if videos.find_one({'custom_key': key}):
+            logger.info(f"File {key} already indexed, skipping")
+            return
         thumbnail_path = None
         thumb_url = f"/thumbnails/{key}.jpg"
-        if msg.video:
-            thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
-            if thumb_attr:
-                thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumbnail_path = await save_thumbnail(thumb.file_id, key)
+        thumbnail_file_id = None
+        if msg.video and hasattr(media, 'thumb') and media.thumb:
+            thumbnail_file_id = media.thumb.file_id
+            thumbnail_path = await save_thumbnail(thumbnail_file_id, key)
         videos.insert_one({
             'file_id': media.file_id,
             'custom_key': key,
             'title': msg.caption or 'Untitled',
             'thumbnail_url': thumb_url,
             'thumbnail_path': thumbnail_path,
+            'thumbnail_file_id': thumbnail_file_id,
             'type': 'video' if msg.video else 'document',
             'category': category
         })
+        logger.info(f"Indexed channel file {key} for category {category}")
 
     async def start_command(update: Update, context):
         args = context.args
