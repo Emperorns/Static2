@@ -9,7 +9,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 import logging
 import asyncio
-import pathlib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -198,7 +197,7 @@ def register_routes():
 
     @app.route('/favicon.ico')
     def favicon():
-        return send_from_directory('static', 'favicon.ico', mimetype='image/x-icon')
+        return send_from_directory('static', 'fallback.jpg', mimetype='image/jpeg')
 
     @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
@@ -216,15 +215,12 @@ def register_routes():
             logger.error(f"Thumbnail file missing for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
 
-# Migrate existing records
-def migrate_thumbnails():
+# Migrate thumbnails asynchronously
+async def migrate_thumbnails():
     for rec in videos.find({'thumbnail_path': None, 'thumbnail_file_id': {'$exists': True}}):
         key = rec['custom_key']
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            thumbnail_path = loop.run_until_complete(save_thumbnail(rec['thumbnail_file_id'], key))
-            loop.close()
+            thumbnail_path = await save_thumbnail(rec['thumbnail_file_id'], key)
             if thumbnail_path:
                 videos.update_one({'custom_key': key}, {'$set': {'thumbnail_path': thumbnail_path}})
                 logger.info(f"Migrated thumbnail for key: {key}")
@@ -233,16 +229,17 @@ def migrate_thumbnails():
         except Exception as e:
             logger.error(f"Error migrating thumbnail for key {key}: {e}")
 
-# Run Flask in background and Telegram bot in foreground
+# Run Flask and Telegram bot
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
-if __name__ == '__main__':
-    migrate_thumbnails()  # Run migration on startup
+async def main():
+    await migrate_thumbnails()  # Run migration before polling
     register_handlers()
     register_routes()
-
     flask_thread = Thread(target=run_flask, daemon=True)
     flask_thread.start()
+    await application.run_polling()
 
-    application.run_polling()
+if __name__ == '__main__':
+    asyncio.run(main())
