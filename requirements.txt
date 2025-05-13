@@ -4,4 +4,4 @@ pymongo==4.5.0
 python-dotenv==1.0.0
 flask_pymongo==2.3.0
 ffmpeg-python==0.2.0
-
+tenacity
