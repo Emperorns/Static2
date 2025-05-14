@@ -118,8 +118,16 @@ async def validate_token(bot):
         logger.error(f"Error validating bot token: {e}")
         return False
 
+async def clear_webhook(bot):
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Webhook cleared successfully")
+    except Exception as e:
+        logger.error(f"Failed to clear webhook: {e}")
+
 def register_handlers():
     async def channel_media(update: Update, context):
+        logger.info(f"Received update: {update.to_dict()}")
         msg = update.message
         if not msg:
             logger.debug("Received update with no message")
@@ -169,6 +177,7 @@ def register_handlers():
             logger.error(f"Failed to index file {key} for category {category}: {e}")
 
     async def start_command(update: Update, context):
+        logger.info(f"Received /start command: {update.to_dict()}")
         args = context.args
         uid = update.effective_user.id
         if args and args[0] == 'verified':
@@ -270,8 +279,9 @@ async def run_polling_with_retry():
     if not await validate_token(sync_bot):
         logger.error("Cannot start polling: Invalid bot token")
         raise InvalidToken("Bot token is invalid")
+    await clear_webhook(sync_bot)
     max_retries = 5
-    retry_delay = 10  # seconds
+    retry_delay = 20  # Increased delay for conflicts
     for attempt in range(max_retries):
         try:
             logger.info(f"Starting polling attempt {attempt + 1}/{max_retries}")
@@ -281,6 +291,7 @@ async def run_polling_with_retry():
             logger.error(f"Polling conflict detected: {e}")
             if attempt < max_retries - 1:
                 logger.info(f"Retrying in {retry_delay} seconds...")
+                await clear_webhook(sync_bot)  # Clear webhook on each retry
                 await asyncio.sleep(retry_delay)
             else:
                 logger.error("Max retries reached. Please ensure only one bot instance is running.")
