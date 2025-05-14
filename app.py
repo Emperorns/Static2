@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 from telegram.error import Conflict, InvalidToken, NetworkError
+from telegram.request import HTTPXRequest
 import logging
 import asyncio
 import nest_asyncio
@@ -48,9 +49,9 @@ db = client[DB_NAME]
 videos = db.videos
 users = db.users
 
-# Initialize Telegram bot with increased timeout
-application = ApplicationBuilder().token(BOT_TOKEN).http_client(httpx.AsyncClient(timeout=30.0)).build()
-sync_bot = Bot(token=BOT_TOKEN)
+# Initialize Telegram bot with custom HTTPXRequest
+application = ApplicationBuilder().token(BOT_TOKEN).request(HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0)).build()
+sync_bot = Bot(token=BOT_TOKEN, request=HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0))
 
 # Ensure thumbnails directory exists
 THUMBNAILS_DIR = os.path.join('static', 'thumbnails')
@@ -271,7 +272,6 @@ async def run_polling_with_retry():
         raise InvalidToken("Bot token is invalid")
     max_retries = 5
     retry_delay = 10  # seconds
-    network_retries = 3
     for attempt in range(max_retries):
         try:
             logger.info(f"Starting polling attempt {attempt + 1}/{max_retries}")
