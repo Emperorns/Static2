@@ -69,30 +69,7 @@
         .progress-bar.active {
             width: 100%;
         }
-        .ad-slot {
-            margin: 2rem auto;
-            width: 100%;
-            max-width: 320px;
-            height: 100px;
-            background: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius);
-            font-size: 0.9rem;
-        }
     </style>
-    <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js"></script>
-    <script>
-        window._shareustag = window._shareustag || {cmd:[]};
-        _shareustag.cmd.push(function() {
-            _shareustag.defineRewardAdSlot('/shareus-admanager/3049258825/0GFGAaeMUW/Rewarded');
-            _shareustag.defineSlot('/shareus-admanager/3049258825/yAuWgfpMHg/2', ["Responsive"], 'shareus-admanager-3049258825-yAuWgfpMHg');
-            _shareustag.defineSlot('/shareus-admanager/3049258825/o5nkl8FIBA/Banner2', ["Responsive"], 'shareus-admanager-3049258825-o5nkl8FIBA');
-            _shareustag.display('shareus-admanager-3049258825-yAuWgfpMHg');
-            _shareustag.display('shareus-admanager-3049258825-o5nkl8FIBA');
-        });
-    </script>
 </head>
 <body>
     <h1>{{ title }}</h1>
@@ -102,8 +79,6 @@
     <div id="timer" aria-live="polite">Please wait 30s…</div>
     <div class="progress"><div class="progress-bar"></div></div>
     <button class="btn" id="open-link" style="display:none;" aria-label="Open file in Telegram">Open in Telegram</button>
-    <div id="shareus-admanager-3049258825-yAuWgfpMHg" class="ad-slot"></div>
-    <div id="shareus-admanager-3049258825-o5nkl8FIBA" class="ad-slot"></div>
     <script>
         const BOT = '{{ bot_username }}';
         let seconds = 30;
