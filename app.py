@@ -125,8 +125,8 @@ def validate_webhook_url(domain):
     if not domain:
         logger.error("KOYEB_PUBLIC_DOMAIN is not set")
         return False
-    # Basic domain validation
-    domain_regex = r'^[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]\.[a-zA-Z]{2,}$'
+    # Updated regex to allow complex subdomains (e.g., stormy-briana-mrblackgod-f86ebf97.koyeb.app)
+    domain_regex = r'^(?:[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]\.)*[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]\.[a-zA-Z]{2,}$'
     if not re.match(domain_regex, domain):
         logger.error(f"Invalid KOYEB_PUBLIC_DOMAIN format: {domain}")
         return False
