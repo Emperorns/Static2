@@ -96,12 +96,12 @@
     <div class="thumbnail">
         <img src="{{ thumb_url }}" alt="{{ title }}" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');" onload="this.classList.add('loaded');">
     </div>
-    <div id="timer" aria-live="polite">Please wait 30s…</div>
+    <div id="timer" aria-live="polite">Please wait 15s…</div>
     <div class="progress"><div class="progress-bar"></div></div>
-    <button class="btn" id="open-link" style="display:none;" aria-label="Open file in Telegram">Open in Telegram</button>
+    <button class="btn" id="open-link" style="display:none;" aria-label="Open file in Telegram">Open</button>
     <script>
         const BOT = '{{ bot_username }}';
-        let seconds = 30;
+        let seconds = 15;
         const timerEl = document.getElementById('timer');
         const btn = document.getElementById('open-link');
         const progressBar = document.querySelector('.progress-bar');
@@ -121,6 +121,18 @@
         }, 1000);
     </script>
     
+<script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
+
+<div id="shareus-admanager-7784906942-KKouEW5CM1">
+ <script>
+     window._shareustag = window._shareustag || {cmd:[]};
+    _shareustag.cmd.push(function() {
+      var slot1 = _shareustag.defineSlot('/shareus-admanager/7784906942/KKouEW5CM1/Banner2', [[336,280]],'shareus-admanager-7784906942-KKouEW5CM1');
+    });
+  </script>
+</div>
+
+
 <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js" ></script>
  <script>
      window._shareustag = window._shareustag || {cmd:[]};
