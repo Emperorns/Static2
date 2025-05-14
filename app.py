@@ -2,7 +2,7 @@ import os
 import io
 from threading import Thread
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory
+from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory, request
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
@@ -36,6 +36,7 @@ CAPTCHA_URL      = os.getenv('CAPTCHA_URL')
 TUTORIAL_URL     = os.getenv('TUTORIAL_URL')
 LOG_CHANNEL      = os.getenv('LOG_CHANNEL')
 BOT_USERNAME     = os.getenv('BOT_USERNAME')
+KOYEB_PUBLIC_DOMAIN = os.getenv('KOYEB_PUBLIC_DOMAIN')
 PORT             = int(os.getenv('PORT', 5000))
 VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
@@ -118,13 +119,6 @@ async def validate_token(bot):
         logger.error(f"Error validating bot token: {e}")
         return False
 
-async def clear_webhook(bot):
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Webhook cleared successfully")
-    except Exception as e:
-        logger.error(f"Failed to clear webhook: {e}")
-
 def register_handlers():
     async def channel_media(update: Update, context):
         logger.info(f"Received update: {update.to_dict()}")
@@ -135,16 +129,17 @@ def register_handlers():
         if not msg.chat.type in ['channel', 'supergroup']:
             logger.debug(f"Received non-channel message: chat_type={msg.chat.type}")
             return
-        logger.info(f"Processing channel post from chat ID {msg.chat.id}")
+        logger.info(f"Processing channel post from chat ID {msg.chat.id} (type: {type(msg.chat.id)})")
         # Map channel ID to category
         channel_map = {
             MOVIES_CHANNEL_ID: 'movies',
             ADULT_CHANNEL_ID: 'adult',
             ANIME_CHANNEL_ID: 'anime'
         }
+        logger.info(f"Expected channel IDs: Movies={MOVIES_CHANNEL_ID}, Adult={ADULT_CHANNEL_ID}, Anime={ANIME_CHANNEL_ID}")
         category = channel_map.get(msg.chat.id)
         if not category:
-            logger.warning(f"Unknown channel ID {msg.chat.id}")
+            logger.warning(f"Unknown channel ID {msg.chat.id} (expected: {channel_map})")
             return
         media = msg.video or msg.document
         if not media:
@@ -254,6 +249,12 @@ def register_routes():
             logger.error(f"Thumbnail file missing for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
 
+    @app.route('/webhook', methods=['POST'])
+    async def webhook():
+        update = Update.de_json(request.get_json(), application.bot)
+        await application.process_update(update)
+        return '', 200
+
 # Migrate thumbnails asynchronously
 async def migrate_thumbnails(bot):
     if not await validate_token(bot):
@@ -271,59 +272,36 @@ async def migrate_thumbnails(bot):
         except Exception as e:
             logger.error(f"Error migrating thumbnail for key {key}: {e}")
 
-# Run Flask and Telegram bot with retry logic for polling
+# Run Flask and Telegram bot in webhook mode
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
-async def run_polling_with_retry():
+async def run_webhook():
     if not await validate_token(sync_bot):
-        logger.error("Cannot start polling: Invalid bot token")
+        logger.error("Cannot start webhook: Invalid bot token")
         raise InvalidToken("Bot token is invalid")
-    await clear_webhook(sync_bot)
-    max_retries = 5
-    retry_delay = 20  # Increased delay for conflicts
-    for attempt in range(max_retries):
-        try:
-            logger.info(f"Starting polling attempt {attempt + 1}/{max_retries}")
-            await application.run_polling()
-            break
-        except Conflict as e:
-            logger.error(f"Polling conflict detected: {e}")
-            if attempt < max_retries - 1:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                await clear_webhook(sync_bot)  # Clear webhook on each retry
-                await asyncio.sleep(retry_delay)
-            else:
-                logger.error("Max retries reached. Please ensure only one bot instance is running.")
-                raise
-        except NetworkError as e:
-            logger.error(f"Network error during polling: {e}")
-            if attempt < max_retries - 1:
-                logger.info(f"Retrying in {retry_delay} seconds due to network error...")
-                await asyncio.sleep(retry_delay)
-            else:
-                logger.error("Max retries reached for network errors. Check network connectivity.")
-                raise
-        except InvalidToken as e:
-            logger.error(f"Invalid token during polling: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during polling: {e}")
-            if attempt < max_retries - 1:
-                logger.info(f"Retrying in {retry_delay} seconds...")
-                await asyncio.sleep(retry_delay)
-            else:
-                logger.error("Max retries reached for unexpected errors.")
-                raise
+    if not KOYEB_PUBLIC_DOMAIN:
+        logger.error("KOYEB_PUBLIC_DOMAIN not set")
+        raise ValueError("KOYEB_PUBLIC_DOMAIN environment variable is required")
+    webhook_url = f"https://{KOYEB_PUBLIC_DOMAIN}/webhook"
+    try:
+        await sync_bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Existing webhook cleared successfully")
+        await sync_bot.set_webhook(webhook_url, drop_pending_updates=True)
+        logger.info(f"Webhook set to {webhook_url}")
+        await application.run_webhook(listen='0.0.0.0', port=PORT, webhook_url=webhook_url)
+    except Exception as e:
+        logger.error(f"Failed to set webhook: {e}")
+        raise
 
 async def main():
-    logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID}, Adult={ADULT_CHANNEL_ID}, Anime={ANIME_CHANNEL_ID}")
+    logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID} (type: {type(MOVIES_CHANNEL_ID)}), Adult={ADULT_CHANNEL_ID} (type: {type(ADULT_CHANNEL_ID)}), Anime={ANIME_CHANNEL_ID} (type: {type(ANIME_CHANNEL_ID)})")
     await migrate_thumbnails(sync_bot)
     register_handlers()
     register_routes()
     flask_thread = Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    await run_polling_with_retry()
+    await run_webhook()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
