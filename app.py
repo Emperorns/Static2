@@ -1,19 +1,21 @@
 import os
 import io
-from threading import Thread
+import re
 from datetime import datetime, timedelta
 from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory, request
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
-from telegram.error import Conflict, InvalidToken, NetworkError
+from telegram.error import Conflict, InvalidToken, NetworkError, BadRequest
 from telegram.request import HTTPXRequest
 import logging
 import asyncio
 import nest_asyncio
-import time
 import httpx
+from tornado.web import Application as TornadoApplication
+from tornado.platform.asyncio import AsyncIOMainLoop
+from tornado.web import RequestHandler
 
 # Apply nest_asyncio for Koyeb compatibility
 nest_asyncio.apply()
@@ -42,7 +44,7 @@ VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
 
 # Initialize Flask app
-app = Flask(__name__)
+flask_app = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -51,7 +53,7 @@ videos = db.videos
 users = db.users
 
 # Initialize Telegram bot with custom HTTPXRequest
-application = ApplicationBuilder().token(BOT_TOKEN).request(HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0)).build()
+telegram_app = ApplicationBuilder().token(BOT_TOKEN).request(HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0)).build()
 sync_bot = Bot(token=BOT_TOKEN, request=HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0))
 
 # Ensure thumbnails directory exists
@@ -118,6 +120,17 @@ async def validate_token(bot):
     except Exception as e:
         logger.error(f"Error validating bot token: {e}")
         return False
+
+def validate_webhook_url(domain):
+    if not domain:
+        logger.error("KOYEB_PUBLIC_DOMAIN is not set")
+        return False
+    # Basic domain validation
+    domain_regex = r'^[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]\.[a-zA-Z]{2,}$'
+    if not re.match(domain_regex, domain):
+        logger.error(f"Invalid KOYEB_PUBLIC_DOMAIN format: {domain}")
+        return False
+    return True
 
 def register_handlers():
     async def channel_media(update: Update, context):
@@ -199,41 +212,41 @@ def register_handlers():
             data={'chat_id': update.effective_chat.id, 'message_id': sent.message_id}
         )
 
-    application.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.VIDEO | filters.Document.ALL), channel_media))
-    application.add_handler(CommandHandler('start', start_command))
+    telegram_app.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.VIDEO | filters.Document.ALL), channel_media))
+    telegram_app.add_handler(CommandHandler('start', start_command))
 
 def register_routes():
-    @app.route('/')
+    @flask_app.route('/')
     def index():
         vids = list(videos.find({'category': 'movies'}).sort('_id', -1))
         return render_template('index.html', videos=vids, bot_username=BOT_USERNAME)
 
-    @app.route('/adult')
+    @flask_app.route('/adult')
     def adult():
         vids = list(videos.find({'category': 'adult'}).sort('_id', -1))
         return render_template('adult.html', videos=vids, bot_username=BOT_USERNAME)
 
-    @app.route('/anime')
+    @flask_app.route('/anime')
     def anime():
         vids = list(videos.find({'category': 'anime'}).sort('_id', -1))
         return render_template('anime.html', videos=vids, bot_username=BOT_USERNAME)
 
-    @app.route('/file/<key>')
+    @flask_app.route('/file/<key>')
     def file_page(key):
         rec = videos.find_one({'custom_key': key})
         if not rec:
             return "File not found", 404
         return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url', ''), title=rec.get('title', 'Untitled'), bot_username=BOT_USERNAME)
 
-    @app.route('/api/videos')
+    @flask_app.route('/api/videos')
     def api_videos():
         return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
 
-    @app.route('/favicon.ico')
+    @flask_app.route('/favicon.ico')
     def favicon():
         return send_from_directory('static', 'fallback.jpg', mimetype='image/jpeg')
 
-    @app.route('/thumbnails/<key>.jpg')
+    @flask_app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
         logger.info(f"Requested thumbnail for key: {key}")
         rec = videos.find_one({'custom_key': key})
@@ -249,11 +262,16 @@ def register_routes():
             logger.error(f"Thumbnail file missing for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
 
-    @app.route('/webhook', methods=['POST'])
-    async def webhook():
-        update = Update.de_json(request.get_json(), application.bot)
-        await application.process_update(update)
-        return '', 200
+# Tornado webhook handler
+class WebhookHandler(RequestHandler):
+    async def post(self):
+        try:
+            update = Update.de_json(self.request.body.decode('utf-8'), telegram_app.bot)
+            await telegram_app.process_update(update)
+            self.set_status(200)
+        except Exception as e:
+            logger.error(f"Error processing webhook update: {e}")
+            self.set_status(500)
 
 # Migrate thumbnails asynchronously
 async def migrate_thumbnails(bot):
@@ -272,40 +290,41 @@ async def migrate_thumbnails(bot):
         except Exception as e:
             logger.error(f"Error migrating thumbnail for key {key}: {e}")
 
-# Run Flask and Telegram bot in webhook mode
-def run_flask():
-    app.run(host='0.0.0.0', port=PORT)
-
-async def run_webhook():
+# Run Flask and Telegram bot in a single Tornado server
+async def run_server():
     if not await validate_token(sync_bot):
-        logger.error("Cannot start webhook: Invalid bot token")
+        logger.error("Cannot start server: Invalid bot token")
         raise InvalidToken("Bot token is invalid")
-    if not KOYEB_PUBLIC_DOMAIN:
-        logger.error("KOYEB_PUBLIC_DOMAIN not set")
-        raise ValueError("KOYEB_PUBLIC_DOMAIN environment variable is required")
+    if not validate_webhook_url(KOYEB_PUBLIC_DOMAIN):
+        logger.error("Cannot start server: Invalid or missing KOYEB_PUBLIC_DOMAIN")
+        raise ValueError("KOYEB_PUBLIC_DOMAIN is invalid or not set")
     webhook_url = f"https://{KOYEB_PUBLIC_DOMAIN}/webhook"
     try:
         await sync_bot.delete_webhook(drop_pending_updates=True)
         logger.info("Existing webhook cleared successfully")
         await sync_bot.set_webhook(webhook_url, drop_pending_updates=True)
         logger.info(f"Webhook set to {webhook_url}")
-        await application.run_webhook(listen='0.0.0.0', port=PORT, webhook_url=webhook_url)
     except Exception as e:
         logger.error(f"Failed to set webhook: {e}")
         raise
+    # Initialize Tornado with Flask WSGI and webhook handler
+    AsyncIOMainLoop().install()
+    from tornado.wsgi import WSGIContainer
+    tornado_app = TornadoApplication([
+        (r"/webhook", WebhookHandler),
+        (r".*", RequestHandler, dict(fallback=WSGIContainer(flask_app)))
+    ])
+    register_handlers()
+    register_routes()
+    tornado_app.listen(PORT, address='0.0.0.0')
+    logger.info(f"Tornado server started on port {PORT}")
 
 async def main():
     logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID} (type: {type(MOVIES_CHANNEL_ID)}), Adult={ADULT_CHANNEL_ID} (type: {type(ADULT_CHANNEL_ID)}), Anime={ANIME_CHANNEL_ID} (type: {type(ANIME_CHANNEL_ID)})")
     await migrate_thumbnails(sync_bot)
-    register_handlers()
-    register_routes()
-    flask_thread = Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    await run_webhook()
+    await run_server()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(main())
-    finally:
-        loop.close()
+    loop.run_until_complete(main())
+    loop.run_forever()
