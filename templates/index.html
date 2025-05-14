@@ -132,18 +132,6 @@
             margin-top: 0.5rem;
             font-size: 1rem;
         }
-        .ad-unit {
-            margin: 1rem auto;
-            width: 100%;
-            max-width: 320px;
-            height: 100px;
-            background: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius);
-            font-size: 0.9rem;
-        }
         #search-overlay {
             position: fixed;
             inset: 0;
@@ -174,6 +162,18 @@
         #search-results .thumbnail {
             width: 100%;
         }
+        /* Age verification overlay */
+        #age-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+        }
+        #main-content { display: none; }
         @media (min-width: 768px) {
             .vertical-scroll {
                 flex-direction: column;
@@ -186,59 +186,59 @@
             }
         }
     </style>
-    <script type="module" src="https://securepubads.shareus.io/scripts/tag/js/gpt.js"></script>
-    <script>
-        window._shareustag = window._shareustag || {cmd:[]};
-        _shareustag.cmd.push(function() {
-            _shareustag.defineSlot(
-                '/shareus-admanager/3049258825/cevFiS93lz/Banner4',
-                ["Responsive"],
-                'shareus-admanager-3049258825-cevFiS93lz'
-            );
-        });
-    </script>
 </head>
 <body>
-    <header>
-        <div class="logo">Adult Video</div>
-        <button class="search-btn" aria-label="Search"></button>
-    </header>
-    <section class="more-files">
-        <h2>More Files</h2>
-        <div class="vertical-scroll" id="more-files-slider">
-            {% for v in videos %}
-            <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
-                <div class="image-container">
-                    <img data-src="{{ v.thumbnail_url }}" alt="{{ v.title }} thumbnail" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');">
-                </div>
-                <div class="title">{{ v.title }}</div>
-            </a>
-            {% endfor %}
+    <!-- Age Verification Overlay -->
+    <div id="age-overlay">
+        <h2>Are you 18+</h2>
+        <button class="btn" id="age-yes">Yes</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content">
+        <header>
+            <div class="logo">Adult Video</div>
+            <button class="search-btn" aria-label="Search"></button>
+        </header>
+        <section class="more-files">
+            <h2>More Files</h2>
+            <div class="vertical-scroll" id="more-files-slider">
+                {% for v in videos %}
+                <a class="thumbnail" href="/file/{{ v.custom_key }}" data-thumb="{{ v.thumbnail_url }}" data-title="{{ v.title }}">
+                    <div class="image-container">
+                        <img data-src="{{ v.thumbnail_url }}" alt="{{ v.title }} thumbnail" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');">
+                    </div>
+                    <div class="title">{{ v.title }}</div>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        <div id="detail-page">
+            <div id="detail-content">
+                <img id="detail-thumb" src="" alt="Detail thumbnail">
+                <h2 id="detail-title"></h2>
+                <button class="btn" id="get-file" aria-label="Get file">Get File</button>
+                <div id="timer"></div>
+                <button class="btn secondary" id="close-detail" aria-label="Close detail overlay">Close</button>
+            </div>
         </div>
-    </section>
-    <div id="detail-page">
-        <div id="detail-content">
-            <img id="detail-thumb" src="" alt="Detail thumbnail">
-            <h2 id="detail-title"></h2>
-            <button class="btn" id="get-file" aria-label="Get file">Get File</button>
-            <div id="timer"></div>
-            <button class="btn secondary" id="close-detail" aria-label="Close detail overlay">Close</button>
-            <div id="shareus-admanager-3049258825-cevFiS93lz" class="ad-unit"></div>
+        <div id="search-overlay">
+            <input type="text" id="overlay-search" placeholder="Search by title..." aria-label="Search videos">
+            <div id="search-results"></div>
+            <button class="btn secondary" id="close-search" aria-label="Close search overlay">Close</button>
         </div>
     </div>
-    <div id="search-overlay">
-        <input type="text" id="overlay-search" placeholder="Search by title..." aria-label="Search videos">
-        <div id="search-results"></div>
-        <button class="btn secondary" id="close-search" aria-label="Close search overlay">Close</button>
-    </div>
+
     <script>
-        const BOT_USERNAME = '{{ bot_username }}';
-        const videos = Array.from(document.querySelectorAll('.thumbnail')).map(item => ({
-            thumb: item.getAttribute('data-thumb'),
-            title: item.getAttribute('data-title'),
-            key: item.getAttribute('href').split('/file/')[1]
-        }));
         document.addEventListener('DOMContentLoaded', () => {
+            // Age verification
+            const ageYes = document.getElementById('age-yes');
+            ageYes.onclick = () => {
+                document.getElementById('age-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+            };
+
+            // Lazy load thumbnails
             const thumbnails = document.querySelectorAll('.thumbnail img');
             let index = 0;
             const loadNext = () => {
@@ -263,79 +263,74 @@
                 img.src = '';
             });
             loadNext();
-        });
-        document.body.addEventListener('click', e => {
-            const item = e.target.closest('.thumbnail');
-            if (!item) return;
-            e.preventDefault();
-            const thumb = item.getAttribute('data-thumb');
-            const title = item.getAttribute('data-title');
-            const key = item.getAttribute('href').split('/file/')[1];
-            document.getElementById('detail-thumb').src = thumb;
-            document.getElementById('detail-title').textContent = title;
-            document.getElementById('get-file').onclick = () => {
-                window.open(`/file/${key}`, '_blank');
-            };
-            document.getElementById('detail-page').classList.add('open');
-            if (window._shareustag) {
-                _shareustag.cmd.push(() => {
-                    _shareustag.display('shareus-admanager-3049258825-cevFiS93lz');
-                });
-            }
-        });
-        document.getElementById('close-detail').onclick = () => {
-            document.getElementById('detail-page').classList.remove('open');
-        };
-        document.querySelector('.search-btn').onclick = () => {
-            document.getElementById('search-overlay').classList.add('open');
-            document.getElementById('overlay-search').focus();
-        };
-        document.getElementById('close-search').onclick = () => {
-            document.getElementById('search-overlay').classList.remove('open');
-            document.getElementById('overlay-search').value = '';
-            document.getElementById('search-results').innerHTML = '';
-        };
-        document.getElementById('overlay-search').oninput = () => {
-            const term = document.getElementById('overlay-search').value.toLowerCase();
-            const results = videos.filter(v => v.title.toLowerCase().includes(term));
-            const resultsContainer = document.getElementById('search-results');
-            resultsContainer.innerHTML = '';
-            results.forEach(v => {
-                const thumbnail = document.createElement('a');
-                thumbnail.className = 'thumbnail';
-                thumbnail.href = `/file/${v.key}`;
-                thumbnail.setAttribute('data-thumb', v.thumb);
-                thumbnail.setAttribute('data-title', v.title);
-                thumbnail.innerHTML = `
-                    <div class="image-container">
-                        <img data-src="${v.thumb}" alt="${v.title} thumbnail" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');">
-                    </div>
-                    <div class="title">${v.title}</div>
-                `;
-                resultsContainer.appendChild(thumbnail);
+
+            // Prepare video data for search
+            const videos = Array.from(document.querySelectorAll('.thumbnail')).map(item => ({
+                thumb: item.getAttribute('data-thumb'),
+                title: item.getAttribute('data-title'),
+                key: item.getAttribute('href').split('/file/')[1]
+            }));
+
+            // Thumbnail click -> detail
+            document.body.addEventListener('click', e => {
+                const item = e.target.closest('.thumbnail');
+                if (!item) return;
+                e.preventDefault();
+                document.getElementById('detail-thumb').src = item.getAttribute('data-thumb');
+                document.getElementById('detail-title').textContent = item.getAttribute('data-title');
+                document.getElementById('get-file').onclick = () => window.open(item.getAttribute('href'), '_blank');
+                document.getElementById('detail-page').classList.add('open');
             });
-            const searchThumbnails = resultsContainer.querySelectorAll('.thumbnail img');
-            let searchIndex = 0;
-            const loadNextSearch = () => {
-                if (searchIndex < searchThumbnails.length) {
-                    const img = searchThumbnails[searchIndex];
-                    img.src = img.getAttribute('data-src');
-                    img.onload = () => {
-                        img.classList.add('loaded');
-                        searchIndex++;
-                        loadNextSearch();
-                    };
-                    img.onerror = () => {
-                        img.src = '/static/fallback.jpg';
-                        this.classList.add('loaded');
-                        searchIndex++;
-                        loadNextSearch();
-                    };
-                }
+            
+            // Close detail overlay
+            document.getElementById('close-detail').onclick = () => {
+                document.getElementById('detail-page').classList.remove('open');
             };
-            searchThumbnails.forEach(img => img.src = '');
-            loadNextSearch();
-        };
+
+            // Search overlay
+            document.querySelector('.search-btn').onclick = () => {
+                document.getElementById('search-overlay').classList.add('open');
+                document.getElementById('overlay-search').focus();
+            };
+            document.getElementById('close-search').onclick = () => {
+                document.getElementById('search-overlay').classList.remove('open');
+                document.getElementById('overlay-search').value = '';
+                document.getElementById('search-results').innerHTML = '';
+            };
+            document.getElementById('overlay-search').oninput = () => {
+                const term = document.getElementById('overlay-search').value.toLowerCase();
+                const results = videos.filter(v => v.title.toLowerCase().includes(term));
+                const resultsContainer = document.getElementById('search-results');
+                resultsContainer.innerHTML = '';
+                results.forEach(v => {
+                    const thumbnail = document.createElement('a');
+                    thumbnail.className = 'thumbnail';
+                    thumbnail.href = `/file/${v.key}`;
+                    thumbnail.setAttribute('data-thumb', v.thumb);
+                    thumbnail.setAttribute('data-title', v.title);
+                    thumbnail.innerHTML = `
+                        <div class="image-container">
+                            <img data-src="${v.thumb}" alt="${v.title} thumbnail" loading="lazy" onerror="this.src='/static/fallback.jpg'; this.classList.add('loaded');">
+                        </div>
+                        <div class="title">${v.title}</div>
+                    `;
+                    resultsContainer.appendChild(thumbnail);
+                });
+                // Lazy load search results
+                const searchImgs = resultsContainer.querySelectorAll('img');
+                let sIndex = 0;
+                const loadSearchNext = () => {
+                    if (sIndex < searchImgs.length) {
+                        const img = searchImgs[sIndex];
+                        img.src = img.getAttribute('data-src');
+                        img.onload = () => { img.classList.add('loaded'); sIndex++; loadSearchNext(); };
+                        img.onerror = () => { img.src = '/static/fallback.jpg'; img.classList.add('loaded'); sIndex++; loadSearchNext(); };
+                    }
+                };
+                searchImgs.forEach(img => img.src = '');
+                loadSearchNext();
+            };
+        });
     </script>
 </body>
 </html>
