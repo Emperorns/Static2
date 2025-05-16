@@ -2,7 +2,7 @@ import os
 import io
 from threading import Thread
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory
+from flask import Flask, render_template, jsonify, send_from_directory, make_response
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
@@ -20,19 +20,19 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
-BOT_TOKEN        = os.getenv('BOT_TOKEN')
-MONGODB_URI      = os.getenv('MONGODB_URI')
-DB_NAME          = os.getenv('DB_NAME')
-ADMIN_ID         = int(os.getenv('ADMIN_ID'))
-CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
-UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')
-CAPTCHA_URL      = os.getenv('CAPTCHA_URL')
-TUTORIAL_URL     = os.getenv('TUTORIAL_URL')
-LOG_CHANNEL      = os.getenv('LOG_CHANNEL')
-BOT_USERNAME     = os.getenv('BOT_USERNAME')
-PORT             = int(os.getenv('PORT', 5000))
-VERIFY_INTERVAL  = timedelta(hours=2)
-SELF_DESTRUCT    = timedelta(hours=1)
+BOT_TOKEN       = os.getenv('BOT_TOKEN')
+MONGODB_URI     = os.getenv('MONGODB_URI')
+DB_NAME         = os.getenv('DB_NAME')
+ADMIN_ID        = int(os.getenv('ADMIN_ID'))
+CHANNEL_ID      = int(os.getenv('CHANNEL_ID'))
+UPDATES_CHANNEL = os.getenv('UPDATES_CHANNEL')
+CAPTCHA_URL     = os.getenv('CAPTCHA_URL')
+TUTORIAL_URL    = os.getenv('TUTORIAL_URL')
+LOG_CHANNEL     = os.getenv('LOG_CHANNEL')
+BOT_USERNAME    = os.getenv('BOT_USERNAME')
+PORT            = int(os.getenv('PORT', 5000))
+VERIFY_INTERVAL = timedelta(hours=2)
+SELF_DESTRUCT   = timedelta(hours=1)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -51,13 +51,29 @@ sync_bot = Bot(token=BOT_TOKEN)
 THUMBNAILS_DIR = os.path.join('static', 'thumbnails')
 os.makedirs(THUMBNAILS_DIR, exist_ok=True)
 
-# Async utilities
+def get_thumbnail_path(key):
+    return os.path.join(THUMBNAILS_DIR, f"{key}.jpg")
+
+async def save_thumbnail(file_id, key):
+    try:
+        file = await sync_bot.get_file(file_id)
+        buf = io.BytesIO()
+        await file.download_to_memory(out=buf)
+        buf.seek(0)
+        path = get_thumbnail_path(key)
+        with open(path, 'wb') as f:
+            f.write(buf.read())
+        return path
+    except Exception as e:
+        logger.error(f"Failed to save thumbnail for {key}: {e}")
+        return None
+
 async def check_membership(bot, user_id):
     try:
         m = await bot.get_chat_member(UPDATES_CHANNEL, user_id)
         return m.status not in ['left', 'kicked']
     except Exception as e:
-        logger.error(f"Error checking membership for user {user_id}: {e}")
+        logger.error(f"Membership check error for {user_id}: {e}")
         return False
 
 async def is_verified(user_id):
@@ -86,101 +102,100 @@ async def delete_message_job(context):
     except Exception as e:
         logger.error(f"Error deleting message: {e}")
 
-async def save_thumbnail(file_id, key):
-    try:
-        file = await sync_bot.get_file(file_id)
-        buf = io.BytesIO()
-        await file.download_to_memory(out=buf)
-        buf.seek(0)
-        thumbnail_path = os.path.join(THUMBNAILS_DIR, f"{key}.jpg")
-        with open(thumbnail_path, 'wb') as f:
-            f.write(buf.read())
-        return f"static/thumbnails/{key}.jpg"
-    except Exception as e:
-        logger.error(f"Failed to save thumbnail for key {key}: {e}")
-        return None
+async def handle_media(update: Update, context):
+    user = update.effective_user
+    if not user or user.id != ADMIN_ID:
+        return
+    msg = update.message
+    media = msg.video or msg.document
+    if not media:
+        return
+    key = f"file_{media.file_unique_id}"
+
+    # extract thumbnail_file_id
+    thumb_id = None
+    if msg.video and msg.video.thumb:
+        thumb_id = msg.video.thumb.file_id
+    elif msg.document and getattr(msg.document, 'thumb', None):
+        thumb_id = msg.document.thumb.file_id
+
+    # save thumbnail locally
+    thumb_path = None
+    if thumb_id:
+        thumb_path = await save_thumbnail(thumb_id, key)
+
+    # forward to channel
+    sent = await context.bot.forward_message(CHANNEL_ID, msg.chat.id, msg.message_id)
+    fid = sent.video.file_id if sent.video else sent.document.file_id
+
+    videos.insert_one({
+        'file_id': fid,
+        'custom_key': key,
+        'title': msg.caption or 'Untitled',
+        'type': 'video' if sent.video else 'document',
+        'thumbnail_file_id': thumb_id,
+        'thumbnail_path': thumb_path,
+        'thumbnail_url': f"/thumbnails/{key}.jpg"
+    })
+    await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
+
+async def channel_media(update: Update, context):
+    post = update.channel_post
+    if not post or post.chat.id != CHANNEL_ID:
+        return
+    media = post.video or post.document
+    key = f"file_{media.file_unique_id}"
+
+    thumb_id = None
+    if post.video and post.video.thumb:
+        thumb_id = post.video.thumb.file_id
+    elif post.document and getattr(post.document, 'thumb', None):
+        thumb_id = post.document.thumb.file_id
+
+    thumb_path = None
+    if thumb_id:
+        thumb_path = await save_thumbnail(thumb_id, key)
+
+    videos.insert_one({
+        'file_id': media.file_id,
+        'custom_key': key,
+        'title': post.caption or 'Untitled',
+        'type': 'video' if post.video else 'document',
+        'thumbnail_file_id': thumb_id,
+        'thumbnail_path': thumb_path,
+        'thumbnail_url': f"/thumbnails/{key}.jpg"
+    })
+
+async def start_command(update: Update, context):
+    args = context.args
+    uid = update.effective_user.id
+    if args and args[0] == 'verified':
+        users.update_one({'user_id': uid}, {'$set': {'last_verified': datetime.utcnow()}}, upsert=True)
+        await context.bot.send_message(LOG_CHANNEL, f"🔐 User {uid} verified")
+        await update.message.reply_text("✅ Verified for 2 hours")
+        return
+    if not await require_access(update, context):
+        return
+    if not args:
+        btn = InlineKeyboardButton("How to Use", url=TUTORIAL_URL)
+        await update.message.reply_text("👋 Welcome!", reply_markup=InlineKeyboardMarkup([[btn]]))
+        return
+    key = args[0]
+    rec = videos.find_one({'custom_key': key})
+    if not rec:
+        await update.message.reply_text("❌ Media not found.")
+        return
+    send_fn = context.bot.send_video if rec['type'] == 'video' else context.bot.send_document
+    sent = await send_fn(update.effective_chat.id, rec['file_id'], caption=rec['title'], protect_content=True)
+    context.job_queue.run_once(delete_message_job, when=SELF_DESTRUCT,
+                               data={'chat_id': update.effective_chat.id, 'message_id': sent.message_id})
+
 
 def register_handlers():
-    async def handle_media(update: Update, context):
-        user = update.effective_user
-        if not user or user.id != ADMIN_ID:
-            return
-        msg = update.message
-        media = msg.video or msg.document
-        if not media:
-            return
-        key = f"file_{media.file_unique_id}"
-        thumbnail_path = None
-        thumb_url = f"/thumbnails/{key}.jpg"
-        if msg.video:
-            thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
-            if thumb_attr:
-                thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumbnail_path = await save_thumbnail(thumb.file_id, key)
-        sent = await context.bot.forward_message(CHANNEL_ID, msg.chat.id, msg.message_id)
-        fid = sent.video.file_id if sent.video else sent.document.file_id
-        videos.insert_one({
-            'file_id': fid,
-            'custom_key': key,
-            'title': msg.caption or 'Untitled',
-            'thumbnail_url': thumb_url,
-            'thumbnail_path': thumbnail_path,
-            'type': 'video' if sent.video else 'document'
-        })
-        await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
-
-    async def channel_media(update: Update, context):
-        post = update.channel_post
-        if not post or post.chat.id != CHANNEL_ID:
-            return
-        media = post.video or post.document
-        key = f"file_{media.file_unique_id}"
-        thumbnail_path = None
-        thumb_url = f"/thumbnails/{key}.jpg"
-        if post.video:
-            thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
-            if thumb_attr:
-                thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumbnail_path = await save_thumbnail(thumb.file_id, key)
-        videos.insert_one({
-            'file_id': media.file_id,
-            'custom_key': key,
-            'title': post.caption or 'Untitled',
-            'thumbnail_url': thumb_url,
-            'thumbnail_path': thumbnail_path,
-            'type': 'video' if post.video else 'document'
-        })
-
-    async def start_command(update: Update, context):
-        args = context.args
-        uid = update.effective_user.id
-        if args and args[0] == 'verified':
-            users.update_one({'user_id': uid}, {'$set': {'last_verified': datetime.utcnow()}}, upsert=True)
-            await context.bot.send_message(LOG_CHANNEL, f"🔐 User {uid} verified")
-            await update.message.reply_text("✅ Verified for 2 hours")
-            return
-        if not await require_access(update, context):
-            return
-        if not args:
-            btn = InlineKeyboardButton("How to Use", url=TUTORIAL_URL)
-            await update.message.reply_text("👋 Welcome!", reply_markup=InlineKeyboardMarkup([[btn]]))
-            return
-        key = args[0]
-        rec = videos.find_one({'custom_key': key})
-        if not rec:
-            await update.message.reply_text("❌ Media not found.")
-            return
-        send_fn = context.bot.send_video if rec['type'] == 'video' else context.bot.send_document
-        sent = await send_fn(update.effective_chat.id, rec['file_id'], caption=rec['title'], protect_content=True)
-        context.job_queue.run_once(
-            delete_message_job,
-            when=SELF_DESTRUCT,
-            data={'chat_id': update.effective_chat.id, 'message_id': sent.message_id}
-        )
-
     application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
     application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document.ALL), channel_media))
     application.add_handler(CommandHandler('start', start_command))
+
 
 def register_routes():
     @app.route('/')
@@ -193,7 +208,9 @@ def register_routes():
         rec = videos.find_one({'custom_key': key})
         if not rec:
             return "File not found", 404
-        return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url', ''), title=rec.get('title', 'Untitled'), bot_username=BOT_USERNAME)
+        return render_template('file.html', key=key,
+                               thumb_url=rec.get('thumbnail_url', ''),
+                               title=rec.get('title', 'Untitled'), bot_username=BOT_USERNAME)
 
     @app.route('/api/videos')
     def api_videos():
@@ -211,29 +228,25 @@ def register_routes():
             logger.error(f"No thumbnail for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
         try:
-            response = make_response(send_from_directory('static/thumbnails', f"{key}.jpg"))
-            response.headers['Cache-Control'] = 'public, max-age=31536000'
-            logger.info(f"Successfully served thumbnail for key: {key}")
-            return response
+            resp = make_response(send_from_directory('static/thumbnails', f"{key}.jpg"))
+            resp.headers['Cache-Control'] = 'public, max-age=31536000'
+            return resp
         except FileNotFoundError:
-            logger.error(f"Thumbnail file missing for key: {key}")
+            logger.error(f"Thumbnail missing for {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
 
-# Migrate thumbnails asynchronously
 async def migrate_thumbnails():
     for rec in videos.find({'thumbnail_path': None, 'thumbnail_file_id': {'$exists': True}}):
         key = rec['custom_key']
         try:
-            thumbnail_path = await save_thumbnail(rec['thumbnail_file_id'], key)
-            if thumbnail_path:
-                videos.update_one({'custom_key': key}, {'$set': {'thumbnail_path': thumbnail_path}})
-                logger.info(f"Migrated thumbnail for key: {key}")
-            else:
-                logger.warning(f"Failed to migrate thumbnail for key: {key}")
+            path = await save_thumbnail(rec['thumbnail_file_id'], key)
+            if path:
+                videos.update_one({'custom_key': key}, {'$set': {'thumbnail_path': path}})
+                logger.info(f"Migrated thumbnail for {key}")
         except Exception as e:
-            logger.error(f"Error migrating thumbnail for key {key}: {e}")
+            logger.error(f"Migration error for {key}: {e}")
 
-# Run Flask and Telegram bot
+
 def run_flask():
     app.run(host='0.0.0.0', port=PORT)
 
@@ -241,10 +254,8 @@ async def main():
     await migrate_thumbnails()
     register_handlers()
     register_routes()
-    flask_thread = Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    Thread(target=run_flask, daemon=True).start()
     await application.run_polling()
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.get_event_loop().run_until_complete(main())
