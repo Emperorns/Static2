@@ -1,23 +1,17 @@
 import os
 import io
-import re
+from threading import Thread
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory, request
+from flask import Flask, render_template, jsonify, send_file, make_response, send_from_directory
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
-from telegram.error import Conflict, InvalidToken, NetworkError, BadRequest
-from telegram.request import HTTPXRequest
 import logging
 import asyncio
 import nest_asyncio
-import httpx
-from tornado.web import Application as TornadoApplication
-from tornado.platform.asyncio import AsyncIOMainLoop
-from tornado.web import RequestHandler
 
-# Apply nest_asyncio for Koyeb compatibility
+# Apply nest_asyncio to allow nested event loops
 nest_asyncio.apply()
 
 # Configure logging
@@ -30,21 +24,18 @@ BOT_TOKEN        = os.getenv('BOT_TOKEN')
 MONGODB_URI      = os.getenv('MONGODB_URI')
 DB_NAME          = os.getenv('DB_NAME')
 ADMIN_ID         = int(os.getenv('ADMIN_ID'))
-MOVIES_CHANNEL_ID = int(os.getenv('MOVIES_CHANNEL_ID'))
-ADULT_CHANNEL_ID  = int(os.getenv('ADULT_CHANNEL_ID'))
-ANIME_CHANNEL_ID  = int(os.getenv('ANIME_CHANNEL_ID'))
+CHANNEL_ID       = int(os.getenv('CHANNEL_ID'))
 UPDATES_CHANNEL  = os.getenv('UPDATES_CHANNEL')
 CAPTCHA_URL      = os.getenv('CAPTCHA_URL')
 TUTORIAL_URL     = os.getenv('TUTORIAL_URL')
 LOG_CHANNEL      = os.getenv('LOG_CHANNEL')
 BOT_USERNAME     = os.getenv('BOT_USERNAME')
-KOYEB_PUBLIC_DOMAIN = os.getenv('KOYEB_PUBLIC_DOMAIN')
 PORT             = int(os.getenv('PORT', 5000))
 VERIFY_INTERVAL  = timedelta(hours=2)
 SELF_DESTRUCT    = timedelta(hours=1)
 
 # Initialize Flask app
-flask_app = Flask(__name__)
+app = Flask(__name__)
 
 # MongoDB setup
 client = MongoClient(MONGODB_URI)
@@ -52,9 +43,9 @@ db = client[DB_NAME]
 videos = db.videos
 users = db.users
 
-# Initialize Telegram bot with custom HTTPXRequest
-telegram_app = ApplicationBuilder().token(BOT_TOKEN).request(HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0)).build()
-sync_bot = Bot(token=BOT_TOKEN, request=HTTPXRequest(http_version="1.1", connect_timeout=30.0, read_timeout=30.0, write_timeout=30.0))
+# Initialize Telegram bot
+application = ApplicationBuilder().token(BOT_TOKEN).build()
+sync_bot = Bot(token=BOT_TOKEN)
 
 # Ensure thumbnails directory exists
 THUMBNAILS_DIR = os.path.join('static', 'thumbnails')
@@ -109,83 +100,58 @@ async def save_thumbnail(file_id, key):
         logger.error(f"Failed to save thumbnail for key {key}: {e}")
         return None
 
-async def validate_token(bot):
-    try:
-        await bot.get_me()
-        logger.info("Bot token validated successfully")
-        return True
-    except InvalidToken as e:
-        logger.error(f"Invalid bot token: {e}")
-        return False
-    except Exception as e:
-        logger.error(f"Error validating bot token: {e}")
-        return False
-
-def validate_webhook_url(domain):
-    if not domain:
-        logger.error("KOYEB_PUBLIC_DOMAIN is not set")
-        return False
-    # Updated regex to allow complex subdomains (e.g., stormy-briana-mrblackgod-f86ebf97.koyeb.app)
-    domain_regex = r'^(?:[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]\.)*[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9]\.[a-zA-Z]{2,}$'
-    if not re.match(domain_regex, domain):
-        logger.error(f"Invalid KOYEB_PUBLIC_DOMAIN format: {domain}")
-        return False
-    return True
-
 def register_handlers():
-    async def channel_media(update: Update, context):
-        logger.info(f"Received update: {update.to_dict()}")
+    async def handle_media(update: Update, context):
+        user = update.effective_user
+        if not user or user.id != ADMIN_ID:
+            return
         msg = update.message
-        if not msg:
-            logger.debug("Received update with no message")
-            return
-        if not msg.chat.type in ['channel', 'supergroup']:
-            logger.debug(f"Received non-channel message: chat_type={msg.chat.type}")
-            return
-        logger.info(f"Processing channel post from chat ID {msg.chat.id} (type: {type(msg.chat.id)})")
-        # Map channel ID to category
-        channel_map = {
-            MOVIES_CHANNEL_ID: 'movies',
-            ADULT_CHANNEL_ID: 'adult',
-            ANIME_CHANNEL_ID: 'anime'
-        }
-        logger.info(f"Expected channel IDs: Movies={MOVIES_CHANNEL_ID}, Adult={ADULT_CHANNEL_ID}, Anime={ANIME_CHANNEL_ID}")
-        category = channel_map.get(msg.chat.id)
-        if not category:
-            logger.warning(f"Unknown channel ID {msg.chat.id} (expected: {channel_map})")
-            return
         media = msg.video or msg.document
         if not media:
-            logger.debug(f"No media in channel post from {msg.chat.id}")
             return
         key = f"file_{media.file_unique_id}"
-        # Prevent duplicate indexing
-        if videos.find_one({'custom_key': key}):
-            logger.info(f"File {key} already indexed, skipping")
-            return
         thumbnail_path = None
         thumb_url = f"/thumbnails/{key}.jpg"
-        thumbnail_file_id = None
-        if msg.video and hasattr(media, 'thumb') and media.thumb:
-            thumbnail_file_id = media.thumb.file_id
-            thumbnail_path = await save_thumbnail(thumbnail_file_id, key)
-        try:
-            videos.insert_one({
-                'file_id': media.file_id,
-                'custom_key': key,
-                'title': msg.caption or 'Untitled',
-                'thumbnail_url': thumb_url,
-                'thumbnail_path': thumbnail_path,
-                'thumbnail_file_id': thumbnail_file_id,
-                'type': 'video' if msg.video else 'document',
-                'category': category
-            })
-            logger.info(f"Successfully indexed file {key} for category {category}")
-        except Exception as e:
-            logger.error(f"Failed to index file {key} for category {category}: {e}")
+        if msg.video:
+            thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
+            if thumb_attr:
+                thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
+                thumbnail_path = await save_thumbnail(thumb.file_id, key)
+        sent = await context.bot.forward_message(CHANNEL_ID, msg.chat.id, msg.message_id)
+        fid = sent.video.file_id if sent.video else sent.document.file_id
+        videos.insert_one({
+            'file_id': fid,
+            'custom_key': key,
+            'title': msg.caption or 'Untitled',
+            'thumbnail_url': thumb_url,
+            'thumbnail_path': thumbnail_path,
+            'type': 'video' if sent.video else 'document'
+        })
+        await context.bot.send_message(ADMIN_ID, f"✅ Saved {key}")
+
+    async def channel_media(update: Update, context):
+        post = update.channel_post
+        if not post or post.chat.id != CHANNEL_ID:
+            return
+        media = post.video or post.document
+        key = f"file_{media.file_unique_id}"
+        thumbnail_path = None
+        thumb_url = f"/thumbnails/{key}.jpg"
+        if post.video:
+            thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
+            if thumb_attr:
+                thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
+                thumbnail_path = await save_thumbnail(thumb.file_id, key)
+        videos.insert_one({
+            'file_id': media.file_id,
+            'custom_key': key,
+            'title': post.caption or 'Untitled',
+            'thumbnail_url': thumb_url,
+            'thumbnail_path': thumbnail_path,
+            'type': 'video' if post.video else 'document'
+        })
 
     async def start_command(update: Update, context):
-        logger.info(f"Received /start command: {update.to_dict()}")
         args = context.args
         uid = update.effective_user.id
         if args and args[0] == 'verified':
@@ -212,41 +178,32 @@ def register_handlers():
             data={'chat_id': update.effective_chat.id, 'message_id': sent.message_id}
         )
 
-    telegram_app.add_handler(MessageHandler(filters.ChatType.CHANNEL & (filters.VIDEO | filters.Document.ALL), channel_media))
-    telegram_app.add_handler(CommandHandler('start', start_command))
+    application.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.VIDEO | filters.Document.ALL), handle_media))
+    application.add_handler(MessageHandler(filters.Chat(CHANNEL_ID) & (filters.VIDEO | filters.Document.ALL), channel_media))
+    application.add_handler(CommandHandler('start', start_command))
 
 def register_routes():
-    @flask_app.route('/')
+    @app.route('/')
     def index():
-        vids = list(videos.find({'category': 'movies'}).sort('_id', -1))
+        vids = list(videos.find().sort('_id', -1))
         return render_template('index.html', videos=vids, bot_username=BOT_USERNAME)
 
-    @flask_app.route('/adult')
-    def adult():
-        vids = list(videos.find({'category': 'adult'}).sort('_id', -1))
-        return render_template('adult.html', videos=vids, bot_username=BOT_USERNAME)
-
-    @flask_app.route('/anime')
-    def anime():
-        vids = list(videos.find({'category': 'anime'}).sort('_id', -1))
-        return render_template('anime.html', videos=vids, bot_username=BOT_USERNAME)
-
-    @flask_app.route('/file/<key>')
+    @app.route('/file/<key>')
     def file_page(key):
         rec = videos.find_one({'custom_key': key})
         if not rec:
             return "File not found", 404
         return render_template('file.html', key=key, thumb_url=rec.get('thumbnail_url', ''), title=rec.get('title', 'Untitled'), bot_username=BOT_USERNAME)
 
-    @flask_app.route('/api/videos')
+    @app.route('/api/videos')
     def api_videos():
         return jsonify(list(videos.find({}, {'_id': 0}).sort('_id', -1)))
 
-    @flask_app.route('/favicon.ico')
+    @app.route('/favicon.ico')
     def favicon():
         return send_from_directory('static', 'fallback.jpg', mimetype='image/jpeg')
 
-    @flask_app.route('/thumbnails/<key>.jpg')
+    @app.route('/thumbnails/<key>.jpg')
     def serve_thumbnail(key):
         logger.info(f"Requested thumbnail for key: {key}")
         rec = videos.find_one({'custom_key': key})
@@ -262,22 +219,8 @@ def register_routes():
             logger.error(f"Thumbnail file missing for key: {key}")
             return send_from_directory('static', 'fallback.jpg'), 200
 
-# Tornado webhook handler
-class WebhookHandler(RequestHandler):
-    async def post(self):
-        try:
-            update = Update.de_json(self.request.body.decode('utf-8'), telegram_app.bot)
-            await telegram_app.process_update(update)
-            self.set_status(200)
-        except Exception as e:
-            logger.error(f"Error processing webhook update: {e}")
-            self.set_status(500)
-
 # Migrate thumbnails asynchronously
-async def migrate_thumbnails(bot):
-    if not await validate_token(bot):
-        logger.warning("Skipping thumbnail migration due to invalid token")
-        return
+async def migrate_thumbnails():
     for rec in videos.find({'thumbnail_path': None, 'thumbnail_file_id': {'$exists': True}}):
         key = rec['custom_key']
         try:
@@ -290,41 +233,18 @@ async def migrate_thumbnails(bot):
         except Exception as e:
             logger.error(f"Error migrating thumbnail for key {key}: {e}")
 
-# Run Flask and Telegram bot in a single Tornado server
-async def run_server():
-    if not await validate_token(sync_bot):
-        logger.error("Cannot start server: Invalid bot token")
-        raise InvalidToken("Bot token is invalid")
-    if not validate_webhook_url(KOYEB_PUBLIC_DOMAIN):
-        logger.error("Cannot start server: Invalid or missing KOYEB_PUBLIC_DOMAIN")
-        raise ValueError("KOYEB_PUBLIC_DOMAIN is invalid or not set")
-    webhook_url = f"https://{KOYEB_PUBLIC_DOMAIN}/webhook"
-    try:
-        await sync_bot.delete_webhook(drop_pending_updates=True)
-        logger.info("Existing webhook cleared successfully")
-        await sync_bot.set_webhook(webhook_url, drop_pending_updates=True)
-        logger.info(f"Webhook set to {webhook_url}")
-    except Exception as e:
-        logger.error(f"Failed to set webhook: {e}")
-        raise
-    # Initialize Tornado with Flask WSGI and webhook handler
-    AsyncIOMainLoop().install()
-    from tornado.wsgi import WSGIContainer
-    tornado_app = TornadoApplication([
-        (r"/webhook", WebhookHandler),
-        (r".*", RequestHandler, dict(fallback=WSGIContainer(flask_app)))
-    ])
-    register_handlers()
-    register_routes()
-    tornado_app.listen(PORT, address='0.0.0.0')
-    logger.info(f"Tornado server started on port {PORT}")
+# Run Flask and Telegram bot
+def run_flask():
+    app.run(host='0.0.0.0', port=PORT)
 
 async def main():
-    logger.info(f"Starting bot with channel IDs: Movies={MOVIES_CHANNEL_ID} (type: {type(MOVIES_CHANNEL_ID)}), Adult={ADULT_CHANNEL_ID} (type: {type(ADULT_CHANNEL_ID)}), Anime={ANIME_CHANNEL_ID} (type: {type(ANIME_CHANNEL_ID)})")
-    await migrate_thumbnails(sync_bot)
-    await run_server()
+    await migrate_thumbnails()
+    register_handlers()
+    register_routes()
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    await application.run_polling()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
-    loop.run_forever()
