@@ -10,6 +10,8 @@ from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, fil
 import logging
 import asyncio
 import nest_asyncio
+import cv2
+import tempfile
 
 # Apply nest_asyncio to allow nested event loops
 nest_asyncio.apply()
@@ -86,9 +88,9 @@ async def delete_message_job(context):
     except Exception as e:
         logger.error(f"Error deleting message: {e}")
 
-async def save_thumbnail(file_id, key):
+async def save_thumbnail(bot, file_id, key):
     try:
-        file = await sync_bot.get_file(file_id)
+        file = await bot.get_file(file_id)
         buf = io.BytesIO()
         await file.download_to_memory(out=buf)
         buf.seek(0)
@@ -98,6 +100,36 @@ async def save_thumbnail(file_id, key):
         return f"static/thumbnails/{key}.jpg"
     except Exception as e:
         logger.error(f"Failed to save thumbnail for key {key}: {e}")
+        return None
+
+async def extract_thumbnail_from_video(bot, file_id, key):
+    try:
+        file = await bot.get_file(file_id)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
+            video_path = tmp_file.name
+            await file.download_to_drive(video_path)
+        
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise Exception("Could not open video")
+        
+        cap.set(cv2.CAP_PROP_POS_MSEC, 1000)
+        ret, frame = cap.read()
+        if not ret:
+            raise Exception("Could not read frame")
+        
+        thumbnail_path = os.path.join(THUMBNAILS_DIR, f"{key}.jpg")
+        cv2.imwrite(thumbnail_path, frame)
+        cap.release()
+        os.remove(video_path)
+        return f"static/thumbnails/{key}.jpg"
+    except Exception as e:
+        logger.error(f"Failed to extract thumbnail for key {key}: {e}")
+        if 'video_path' in locals():
+            try:
+                os.remove(video_path)
+            except:
+                pass
         return None
 
 def register_handlers():
@@ -116,7 +148,9 @@ def register_handlers():
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumbnail_path = await save_thumbnail(thumb.file_id, key)
+                thumbnail_path = await save_thumbnail(context.bot, thumb.file_id, key)
+            else:
+                thumbnail_path = await extract_thumbnail_from_video(context.bot, media.file_id, key)
         sent = await context.bot.forward_message(CHANNEL_ID, msg.chat.id, msg.message_id)
         fid = sent.video.file_id if sent.video else sent.document.file_id
         videos.insert_one({
@@ -141,7 +175,9 @@ def register_handlers():
             thumb_attr = getattr(media, 'thumbnail', None) or getattr(media, 'thumb', None)
             if thumb_attr:
                 thumb = thumb_attr[-1] if isinstance(thumb_attr, list) else thumb_attr
-                thumbnail_path = await save_thumbnail(thumb.file_id, key)
+                thumbnail_path = await save_thumbnail(context.bot, thumb.file_id, key)
+            else:
+                thumbnail_path = await extract_thumbnail_from_video(context.bot, media.file_id, key)
         videos.insert_one({
             'file_id': media.file_id,
             'custom_key': key,
@@ -224,7 +260,7 @@ async def migrate_thumbnails():
     for rec in videos.find({'thumbnail_path': None, 'thumbnail_file_id': {'$exists': True}}):
         key = rec['custom_key']
         try:
-            thumbnail_path = await save_thumbnail(rec['thumbnail_file_id'], key)
+            thumbnail_path = await save_thumbnail(sync_bot, rec['thumbnail_file_id'], key)
             if thumbnail_path:
                 videos.update_one({'custom_key': key}, {'$set': {'thumbnail_path': thumbnail_path}})
                 logger.info(f"Migrated thumbnail for key: {key}")
